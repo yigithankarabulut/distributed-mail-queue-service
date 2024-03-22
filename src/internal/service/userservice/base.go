@@ -2,16 +2,18 @@ package userservice
 
 import (
 	"context"
-	"github.com/yigithankarabulut/distributed-mail-queue-service/src/internal/dto"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/src/internal/dto/req"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/src/internal/dto/res"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/src/internal/storage/taskstorage"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/src/internal/storage/userstorage"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/src/pkg"
 )
 
 type UserService interface {
-	Register(ctx context.Context, req dto.RegisterUserRequest) error
-	GetUser(ctx context.Context, req dto.GetUserRequest) (dto.GetUserResponse, error)
-	UpdateUser(ctx context.Context, req dto.UpdateUserRequest) (dto.UpdateUserResponse, error)
+	Register(ctx context.Context, req dtoreq.RegisterRequest) error
+	Login(ctx context.Context, req dtoreq.LoginRequest) (dtores.LoginResponse, error)
+	GetUser(ctx context.Context, req dtoreq.GetUserRequest) (dtores.GetUserResponse, error)
+	UpdateUser(ctx context.Context, req dtoreq.UpdateUserRequest) (dtores.UpdateUserResponse, error)
 }
 
 type userService struct {

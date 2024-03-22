@@ -3,6 +3,8 @@ package model
 import (
 	"crypto/tls"
 	"gopkg.in/gomail.v2"
+	"log"
+	"time"
 )
 
 type GoMail struct {
@@ -32,7 +34,48 @@ func (g *GoMail) NewDialer() *gomail.Dialer {
 }
 
 func (g *GoMail) Send(d *gomail.Dialer, m *gomail.Message) error {
-	return d.DialAndSend(m)
+
+	ch := make(chan *gomail.Message)
+
+	go func() {
+		var s gomail.SendCloser
+		var err error
+		open := false
+		for {
+			select {
+			case m, ok := <-ch:
+				if !ok {
+					return
+				}
+				if !open {
+					if s, err = d.Dial(); err != nil {
+						log.Print(err)
+						return
+					}
+					open = true
+				}
+				if err := gomail.Send(s, m); err != nil {
+					log.Print(err)
+				}
+			// Close the connection to the SMTP server if no email was sent in
+			// the last 30 seconds.
+			case <-time.After(30 * time.Second):
+				if open {
+					if err := s.Close(); err != nil {
+						log.Print(err)
+						return
+					}
+					open = false
+				}
+			}
+		}
+	}()
+
+	// Use the channel in your program to send emails.
+	ch <- m
+	// Close the channel to stop the mail daemon.
+	close(ch)
+	return nil
 }
 
 func Example() {

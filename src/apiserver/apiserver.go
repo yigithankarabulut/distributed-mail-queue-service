@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/src/config"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/src/internal/service/taskservice"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/src/internal/service/userservice"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/src/internal/storage/taskstorage"
@@ -16,13 +17,11 @@ import (
 	"github.com/yigithankarabulut/distributed-mail-queue-service/src/pkg"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/src/pkg/constant"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/src/pkg/postgres"
-	"strings"
-
-	"github.com/yigithankarabulut/distributed-mail-queue-service/src/config"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/src/releaseinfo"
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 )
 
@@ -140,7 +139,7 @@ func initializeApp(apiserv *apiServer) {
 	})
 
 	corsConfig.AllowOrigins = constant.AllowedOrigins
-	corsConfig.AllowCredentials = true
+	corsConfig.AllowCredentials = false
 	corsConfig.AllowHeaders = strings.Join(
 		[]string{
 			constant.ContentType,

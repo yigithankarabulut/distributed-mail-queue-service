@@ -1,8 +1,8 @@
 package taskservice
 
 import (
-	taskstorage "github.com/yigithankarabulut/distributed-mail-queue-service/src/internal/storage/task"
-	userstorage "github.com/yigithankarabulut/distributed-mail-queue-service/src/internal/storage/user"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/src/internal/storage/taskstorage"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/src/internal/storage/userstorage"
 )
 
 type TaskService interface {

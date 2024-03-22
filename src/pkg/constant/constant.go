@@ -3,6 +3,12 @@ package constant
 import "time"
 
 const (
+	Test_To      = "dobrainmusic@gmail.com"
+	Test_Subject = "Test Mail"
+	Test_Body    = "Hello, this is a test email!"
+)
+
+const (
 	ContentType    = "Content-Type"
 	Authorization  = "Authorization"
 	AllowedOrigins = "*"

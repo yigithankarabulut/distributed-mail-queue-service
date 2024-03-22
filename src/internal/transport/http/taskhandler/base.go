@@ -19,8 +19,10 @@ type taskHandler struct {
 	taskService taskservice.TaskService
 }
 
+// Option is the option type for task handler.
 type Option func(*taskHandler)
 
+// WithBaseHttpHandler sets the base http handler option.
 func WithBaseHttpHandler(handler *basehttphandler.BaseHttpHandler) Option {
 	return func(h *taskHandler) {
 		h.BaseHttpHandler = handler

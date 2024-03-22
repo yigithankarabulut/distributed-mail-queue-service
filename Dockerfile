@@ -1,0 +1,9 @@
+FROM postgres:latest
+
+ENV POSTGRES_DB=DMQS \
+    POSTGRES_USER=ykarabul \
+    POSTGRES_PASSWORD=yigitsh \
+    POSTGRES_HOST=localhost \
+    POSTGRES_PORT=5432
+
+EXPOSE 5432

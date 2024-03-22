@@ -3,23 +3,26 @@ package userservice
 import (
 	"context"
 	"fmt"
-	"github.com/yigithankarabulut/distributed-mail-queue-service/src/internal/dto"
+	dtoreq "github.com/yigithankarabulut/distributed-mail-queue-service/src/internal/dto/req"
+	dtores "github.com/yigithankarabulut/distributed-mail-queue-service/src/internal/dto/res"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/src/model"
+	"time"
 )
 
 // TODO: add custom error types
 
-func (s *userService) Register(ctx context.Context, req dto.RegisterUserRequest) error {
+func (s *userService) Register(ctx context.Context, req dtoreq.RegisterRequest) error {
 	var (
 		user model.User
-		err  error
+		tx   = s.userStorage.CreateTx()
 	)
+	defer s.userStorage.RollbackTx(tx)
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
 	default:
-		if _, err = s.userStorage.GetByEmail(ctx, user.Email); err == nil {
-			return fmt.Errorf("user with email %s already exists", user.Email)
+		if _, err := s.userStorage.GetByEmail(ctx, req.Email); err == nil {
+			return fmt.Errorf("email already exists")
 		}
 		hashPwd, err := s.PassUtils.HashPassword(req.Password)
 		if err != nil {
@@ -27,16 +30,57 @@ func (s *userService) Register(ctx context.Context, req dto.RegisterUserRequest)
 		}
 		req.Password = hashPwd
 		user = req.ConvertToUser()
+		//testMail := model.GoMail{
+		//	From:         user.Email,
+		//	To:           constant.Test_To,
+		//	Body:         constant.Test_Body,
+		//	Subject:      constant.Test_Subject,
+		//	SmtpHost:     user.SmtpHost,
+		//	SmtpPort:     user.SmtpPort,
+		//	SmtpUsername: user.SmtpUsername,
+		//	SmtpPassword: user.SmtpPassword,
+		//}
+
+		//if err = testMail.Send(testMail.NewDialer(), testMail.NewMessage()); err != nil {
+		//	return fmt.Errorf("error sending test mail: %w", err)
+		//}
 		if err = s.userStorage.Insert(ctx, user); err != nil {
 			return fmt.Errorf("error inserting user: %w", err)
 		}
+		s.userStorage.CommitTx(tx)
 		return nil
 	}
 }
 
-func (s *userService) GetUser(ctx context.Context, req dto.GetUserRequest) (dto.GetUserResponse, error) {
+func (s *userService) Login(ctx context.Context, req dtoreq.LoginRequest) (dtores.LoginResponse, error) {
 	var (
-		res dto.GetUserResponse
+		res dtores.LoginResponse
+	)
+	select {
+	case <-ctx.Done():
+		return res, ctx.Err()
+	default:
+		user, err := s.userStorage.GetByEmail(ctx, req.Email)
+		if err != nil {
+			return res, fmt.Errorf("error getting user: %w", err)
+		}
+		if err := s.PassUtils.ComparePassword(user.Password, req.Password); err != nil {
+			return res, err
+		}
+
+		token, err := s.JwtUtils.GenerateJwtToken(user.ID, 12*time.Hour)
+		if err != nil {
+			return res, fmt.Errorf("error generating token: %w", err)
+		}
+		res.ID = user.ID
+		res.Token = token
+		return res, nil
+	}
+}
+
+func (s *userService) GetUser(ctx context.Context, req dtoreq.GetUserRequest) (dtores.GetUserResponse, error) {
+	var (
+		res dtores.GetUserResponse
 	)
 	select {
 	case <-ctx.Done():
@@ -51,6 +95,6 @@ func (s *userService) GetUser(ctx context.Context, req dto.GetUserRequest) (dto.
 	}
 }
 
-func (s *userService) UpdateUser(ctx context.Context, req dto.UpdateUserRequest) (dto.UpdateUserResponse, error) {
-	return dto.UpdateUserResponse{}, nil
+func (s *userService) UpdateUser(ctx context.Context, req dtoreq.UpdateUserRequest) (dtores.UpdateUserResponse, error) {
+	return dtores.UpdateUserResponse{}, nil
 }
