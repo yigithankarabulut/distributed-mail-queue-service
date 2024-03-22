@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/joho/godotenv"
-	"github.com/yigithankarabulut/distributed-mail-queue-service/src/apiserver"
-	"github.com/yigithankarabulut/distributed-mail-queue-service/src/config"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/apiserver"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/config"
 	"log"
 )
 
