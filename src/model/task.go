@@ -2,8 +2,8 @@ package model
 
 import "gorm.io/gorm"
 
-// MailQueue struct
-type MailQueue struct {
+// MailTaskQueue is a struct that represent the mail task queue table in the database.
+type MailTaskQueue struct {
 	gorm.Model
 	UserID         uint
 	User           User   `gorm:"foreignKey:UserID"`
@@ -11,5 +11,5 @@ type MailQueue struct {
 	Subject        string
 	Body           string
 	Status         string
-	TryCount       int
+	TryCount       int // max 5
 }
