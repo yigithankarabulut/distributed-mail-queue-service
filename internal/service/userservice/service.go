@@ -86,7 +86,7 @@ func (s *userService) GetUser(ctx context.Context, req dtoreq.GetUserRequest) (d
 	case <-ctx.Done():
 		return res, ctx.Err()
 	default:
-		user, err := s.userStorage.GetByID(ctx, req.ID)
+		user, err := s.userStorage.GetByID(ctx, req.UserID)
 		if err != nil {
 			return res, fmt.Errorf("error getting user: %w", err)
 		}

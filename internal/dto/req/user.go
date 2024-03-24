@@ -37,5 +37,5 @@ type UpdateUserRequest struct {
 }
 
 type GetUserRequest struct {
-	ID uint `json:"-" query:"id" validate:"required,numeric"`
+	UserID uint `json:"-" query:"-" validate:"required,numeric"`
 }

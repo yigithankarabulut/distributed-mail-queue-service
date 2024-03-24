@@ -1,12 +1,8 @@
 package model
 
-import "gorm.io/gorm"
-
-const (
-	StatusCreated = iota
-	StatusPending
-	StatusSuccess
-	StatusFailed
+import (
+	"gorm.io/gorm"
+	"time"
 )
 
 // MailTaskQueue is a struct that represent the mail task queue table in the database.
@@ -19,4 +15,5 @@ type MailTaskQueue struct {
 	RecipientEmail string `gorm:"not null"`
 	Subject        string
 	Body           string
+	ScheduledAt    time.Time
 }

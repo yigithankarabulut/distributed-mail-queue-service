@@ -9,6 +9,18 @@ const (
 )
 
 const (
+	RedisMailQueueChannel = "mail_queue"
+)
+
+const (
+	StatusQueued = iota
+	StatusProcessing
+	StatusSuccess
+	StatusFailed
+	StatusScheduled
+)
+
+const (
 	ContentType    = "Content-Type"
 	Authorization  = "Authorization"
 	AllowedOrigins = "*"

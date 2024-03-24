@@ -9,14 +9,18 @@ import (
 	"github.com/yigithankarabulut/distributed-mail-queue-service/config"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/service/taskservice"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/service/userservice"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/service/workerservice"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/storage/taskqueue"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/storage/taskstorage"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/storage/userstorage"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/transport/http/basehttphandler"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/transport/http/taskhandler"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/transport/http/userhandler"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/model"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/constant"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/postgres"
+	redisclient "github.com/yigithankarabulut/distributed-mail-queue-service/pkg/redis"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/releaseinfo"
 	"log/slog"
 	"os"
@@ -106,9 +110,11 @@ func NewApiServer(opts ...Option) error {
 
 // connectStorages connects to the storages and returns an error if any.
 func connectStorages(apiserv *apiServer) error {
-	_, err := postgres.ConnectPQ(apiserv.config.Database)
-	if err != nil {
+	if _, err := postgres.ConnectPQ(apiserv.config.Database); err != nil {
 		return fmt.Errorf("error connecting to postgres: %w", err)
+	}
+	if _, err := redisclient.New(apiserv.config.Redis); err != nil {
+		return fmt.Errorf("error connecting to redis: %w", err)
 	}
 	return nil
 }
@@ -179,8 +185,14 @@ func healthzCheck(apiserv *apiServer) {
 // appendDepends create instances from all layers and append them together. Then add it to the fiber by calling the AddRoutes method of all its handlers.
 func appendDepends(apiserv *apiServer) {
 	packages := pkg.New()
+	TaskQueueChannel := make(chan model.MailTaskQueue, 1000)
+
 	userStorage := userstorage.New(userstorage.WithUserDB(postgres.DB))
 	taskStorage := taskstorage.New(taskstorage.WithTaskDB(postgres.DB))
+	taskQueue := taskqueue.New(
+		taskqueue.WithRedisClient(redisclient.GetRedisClient()),
+		taskqueue.WithChannel(TaskQueueChannel),
+	)
 
 	userService := userservice.New(
 		userservice.WithUserStorage(userStorage),
@@ -190,14 +202,32 @@ func appendDepends(apiserv *apiServer) {
 	taskService := taskservice.New(
 		taskservice.WithTaskStorage(taskStorage),
 		taskservice.WithUserStorage(userStorage),
+		taskservice.WithRedisClient(taskQueue),
 	)
+
+	go func() {
+		if err := taskQueue.SubscribeTask(constant.RedisMailQueueChannel); err != nil {
+			apiserv.logger.Error("error subscribing to redis channel", "error", err)
+		}
+	}()
+
+	for id := 0; id < 10; id++ {
+		go func(id int) {
+			worker := workerservice.New(
+				id+1,
+				workerservice.WithDB(postgres.DB),
+				workerservice.WithChannel(TaskQueueChannel),
+				workerservice.WithTaskQueue(taskQueue),
+			)
+			worker.TriggerWorker()
+		}(id)
+	}
 
 	baseHttpHandler := basehttphandler.New(
 		basehttphandler.WithContextTimeout(constant.ContextCancelTimeout),
 		basehttphandler.WithLogger(apiserv.logger),
 		basehttphandler.WithPackages(packages),
 	)
-
 	userHandler := userhandler.New(
 		userhandler.WithBaseHttpHandler(baseHttpHandler),
 		userhandler.WithUserService(userService),

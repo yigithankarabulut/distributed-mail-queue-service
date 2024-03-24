@@ -3,15 +3,15 @@ package userhandler
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/req"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/releaseinfo"
 )
 
 func (h *userHandler) AddRoutes(r fiber.Router) {
-	r.Post("/register", h.Register)
-	r.Post("/login", h.Login)
-	user := r.Group("/user")
-	user.Use(h.Packages.JwtUtils.AuthMiddleware())
-	user.Get("/:id/details", h.GetUser)
-	user.Put("/:id/update", h.UpdateUser)
+	r.Post(releaseinfo.RegisterUserApiPath, h.Register)
+	r.Post(releaseinfo.LoginUserApiPath, h.Login)
+	r.Use(h.Packages.JwtUtils.AuthMiddleware())
+	r.Get(releaseinfo.GetUserApiPath, h.GetUser)
+	r.Put(releaseinfo.UpdateUserApiPath, h.UpdateUser)
 }
 
 func (h *userHandler) Register(c *fiber.Ctx) error {
@@ -45,6 +45,7 @@ func (h *userHandler) GetUser(c *fiber.Ctx) error {
 	var (
 		req dtoreq.GetUserRequest
 	)
+	req.UserID = c.Locals("userID").(uint)
 	if err := h.Validator.BindAndValidate(c, &req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(h.Response.BasicError(err, fiber.StatusBadRequest))
 	}

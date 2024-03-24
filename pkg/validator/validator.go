@@ -39,10 +39,13 @@ func (v *Validator) getTagNameFunc(tag string) func(fld reflect.StructField) str
 }
 
 func (v *Validator) parseAndValidate(c *fiber.Ctx, data interface{}) error {
-	if err := c.BodyParser(data); err != nil {
-		return err
-	}
-	if err := c.QueryParser(data); err != nil {
+	var (
+		err  error
+		err2 error
+	)
+	err = c.BodyParser(data)
+	err2 = c.QueryParser(data)
+	if err != nil && err2 != nil {
 		return err
 	}
 	if err := v.RegisterValidation(data); err != nil {

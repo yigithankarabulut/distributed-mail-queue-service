@@ -1,8 +1,22 @@
 package releaseinfo
 
 const (
-	version = "/v1"
-	//smsQueue = version + "/SmsQueue"
+	version       = "/" + Version
+	MailTaskQueue = version + "/task/mail"
+	User          = version + "/user"
+)
+
+const (
+	RegisterUserApiPath = version + "/register"
+	LoginUserApiPath    = version + "/login"
+	GetUserApiPath      = User + "/:id"
+	UpdateUserApiPath   = User + "/update"
+)
+
+const (
+	EnqueueMailApiPath            = MailTaskQueue + "/enqueue"
+	GetAllQueuedMailTasksApiPath  = MailTaskQueue + "/queue"
+	GetAllFailedQueuedMailApiPath = MailTaskQueue + "/queue/fail"
 )
 
 // SmsQueue service apis
