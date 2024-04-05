@@ -5,7 +5,9 @@ import (
 	"fmt"
 	dtoreq "github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/req"
 	dtores "github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/res"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/service/mailservice"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/model"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/constant"
 	"time"
 )
 
@@ -30,20 +32,18 @@ func (s *userService) Register(ctx context.Context, req dtoreq.RegisterRequest) 
 		}
 		req.Password = hashPwd
 		user = req.ConvertToUser()
-		//testMail := model.GoMail{
-		//	From:         user.Email,
-		//	To:           constant.Test_To,
-		//	Body:         constant.Test_Body,
-		//	Subject:      constant.Test_Subject,
-		//	SmtpHost:     user.SmtpHost,
-		//	SmtpPort:     user.SmtpPort,
-		//	SmtpUsername: user.SmtpUsername,
-		//	SmtpPassword: user.SmtpPassword,
-		//}
-
-		//if err = testMail.Send(testMail.NewDialer(), testMail.NewMessage()); err != nil {
-		//	return fmt.Errorf("error sending test mail: %w", err)
-		//}
+		testTask := model.MailTaskQueue{
+			User:           user,
+			RecipientEmail: constant.Test_To,
+			Subject:        constant.Test_Subject,
+			Body:           constant.Test_Body,
+		}
+		testMail := mailservice.New( // TODO: append interface to the function name
+			mailservice.WithTask(testTask),
+		)
+		if err := testMail.SendMail(testMail.NewDialer(), testMail.NewMessage()); err != nil {
+			return fmt.Errorf("error sending test mail: %w", err)
+		}
 		if err = s.userStorage.Insert(ctx, user); err != nil {
 			return fmt.Errorf("error inserting user: %w", err)
 		}

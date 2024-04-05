@@ -17,3 +17,4 @@ type MailTaskQueue struct {
 	Body           string
 	ScheduledAt    time.Time
 }
+

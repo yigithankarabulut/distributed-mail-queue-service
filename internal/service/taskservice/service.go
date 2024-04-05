@@ -2,8 +2,9 @@ package taskservice
 
 import (
 	"context"
-	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/req"
-	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/res"
+
+	dtoreq "github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/req"
+	dtores "github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/res"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/model"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/constant"
 )

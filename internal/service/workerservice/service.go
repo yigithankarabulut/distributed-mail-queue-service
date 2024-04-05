@@ -29,14 +29,14 @@ func (c *worker) SendMail(task model.MailTaskQueue) {
 		log.Errorf("Error sending mail: %v", err)
 		task.TryCount++
 		if task.TryCount >= 3 {
-			task.Status = constant.StatusFailed
+			task.Status = constant.StatusCancelled
 			c.db.Save(&task)
 			return
 		}
 		if err := c.taskqueue.PublishTask(constant.RedisMailQueueChannel, task); err != nil {
 			log.Errorf("Error publishing task: %v", err)
 		}
-		task.Status = constant.StatusQueued
+		task.Status = constant.StatusFailed
 		c.db.Save(&task)
 		return
 	}

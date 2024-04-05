@@ -17,6 +17,7 @@ const (
 	StatusProcessing
 	StatusSuccess
 	StatusFailed
+	StatusCancelled
 	StatusScheduled
 )
 
