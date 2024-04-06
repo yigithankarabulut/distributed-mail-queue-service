@@ -33,9 +33,17 @@ func (s *taskStorage) GetAll(ctx context.Context, userID uint) ([]model.MailTask
 	return tasks, nil
 }
 
-func (s *taskStorage) GetAllByStatus(ctx context.Context, state int, userID uint) ([]model.MailTaskQueue, error) {
+func (s *taskStorage) GetAllByStatus(ctx context.Context, state int) ([]model.MailTaskQueue, error) {
 	var tasks []model.MailTaskQueue
-	if err := s.db.Where("state = ? AND user_id = ?", state, userID).Find(&tasks).Error; err != nil {
+	if err := s.db.Where("status = ?", state).Find(&tasks).Error; err != nil {
+		return tasks, err
+	}
+	return tasks, nil
+}
+
+func (s *taskStorage) GetAllByStatusWithUserID(ctx context.Context, state int, userID uint) ([]model.MailTaskQueue, error) {
+	var tasks []model.MailTaskQueue
+	if err := s.db.Where("status = ? AND user_id = ?", state, userID).Find(&tasks).Error; err != nil {
 		return tasks, err
 	}
 	return tasks, nil

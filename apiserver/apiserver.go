@@ -3,9 +3,12 @@ package apiserver
 import (
 	"context"
 	"fmt"
+	"github.com/go-co-op/gocron/v2"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
+	"github.com/google/uuid"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/config"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/service/taskservice"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/service/userservice"
@@ -27,6 +30,12 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
+)
+
+const (
+	QueueConsumerCount = 10
+	WorkerCount        = 10
 )
 
 type HttpEndpoints interface {
@@ -185,13 +194,15 @@ func healthzCheck(apiserv *apiServer) {
 // appendDepends create instances from all layers and append them together. Then add it to the fiber by calling the AddRoutes method of all its handlers.
 func appendDepends(apiserv *apiServer) {
 	packages := pkg.New()
-	TaskQueueChannel := make(chan model.MailTaskQueue, 1000)
+	TaskQueueChannel := make(chan model.MailTaskQueue, 100)
 
 	userStorage := userstorage.New(userstorage.WithUserDB(postgres.DB))
 	taskStorage := taskstorage.New(taskstorage.WithTaskDB(postgres.DB))
 	taskQueue := taskqueue.New(
+		taskqueue.WithTaskChannel(TaskQueueChannel),
+		taskqueue.WithConsumerCount(QueueConsumerCount),
+		taskqueue.WithQueueName(constant.RedisMailQueueChannel),
 		taskqueue.WithRedisClient(redisclient.GetRedisClient()),
-		taskqueue.WithChannel(TaskQueueChannel),
 	)
 
 	userService := userservice.New(
@@ -204,23 +215,42 @@ func appendDepends(apiserv *apiServer) {
 		taskservice.WithUserStorage(userStorage),
 		taskservice.WithRedisClient(taskQueue),
 	)
+	if err := taskService.FindUnprocessedTasksAndEnqueue(context.Background()); err != nil {
+		apiserv.logger.Error("error finding unprocessed tasks", "error", err)
+	}
 
-	go func() {
-		if err := taskQueue.SubscribeTask(constant.RedisMailQueueChannel); err != nil {
-			apiserv.logger.Error("error subscribing to redis channel", "error", err)
-		}
-	}()
+	if err := taskQueue.StartConsume(); err != nil {
+		apiserv.logger.Error("error starting consume", "error", err)
+	}
+	s, err := gocron.NewScheduler()
+	if err != nil {
+		apiserv.logger.Error("error creating scheduler", "error", err)
+	}
 
-	for id := 0; id < 10; id++ {
-		go func(id int) {
-			worker := workerservice.New(
-				id+1,
-				workerservice.WithDB(postgres.DB),
-				workerservice.WithChannel(TaskQueueChannel),
-				workerservice.WithTaskQueue(taskQueue),
-			)
-			worker.TriggerWorker()
-		}(id)
+	cronJob := &CronJob{
+		JobName:   "FindUnprocessedTasksAndEnqueue",
+		Scheduler: s,
+		Task:      gocron.NewTask(taskService.FindUnprocessedTasksAndEnqueue, context.TODO()),
+		Duration:  gocron.DurationJob(10 * time.Second),
+	}
+	jobID := cronJob.AddJob()
+	if jobID == uuid.Nil {
+		apiserv.logger.Error("error adding job")
+	}
+	log.Infof("job id: %s", jobID)
+	s.Start()
+
+	workers := make([]workerservice.IWorker, WorkerCount)
+	for i := 0; i < WorkerCount; i++ {
+		workers[i] = workerservice.New(
+			workerservice.WithID(i+1),
+			workerservice.WithTaskStorage(taskStorage),
+			workerservice.WithTaskQueue(taskQueue),
+			workerservice.WithChannel(TaskQueueChannel),
+		)
+	}
+	for _, worker := range workers {
+		go worker.TriggerWorker()
 	}
 
 	baseHttpHandler := basehttphandler.New(

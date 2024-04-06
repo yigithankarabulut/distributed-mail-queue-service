@@ -10,42 +10,53 @@ import (
 	"time"
 )
 
-func (r *taskQueue) PublishTask(channel string, task interface{}) error {
+func (r *taskQueue) PublishTask(task interface{}) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	taskJson, err := json.Marshal(task)
 	if err != nil {
 		return err
 	}
-	if err := r.rdb.LPush(ctx, channel, taskJson).Err(); err != nil {
+	if err := r.rdb.LPush(ctx, r.queueName, taskJson).Err(); err != nil {
 		return err
 	}
-	log.Infof("Publishing task to channel: %s", channel)
+	log.Infof("publishing task to channel: %s", r.queueName)
 	return nil
 }
 
-func (r *taskQueue) SubscribeTask(channel string) error {
+func (r *taskQueue) SubscribeTask(consumerID int) error {
 	var (
 		ctx  context.Context
 		task model.MailTaskQueue
 	)
 
 	ctx = context.Background()
-	log.Infof("Subscribing to channel: %s", channel)
+	log.Infof("consumer %d subscribed to channel: %s", consumerID, r.queueName)
 	for {
-		msg, err := r.rdb.LPop(ctx, channel).Result()
+		msg, err := r.rdb.LPop(ctx, r.queueName).Result()
 		if err != nil {
 			if errors.Is(err, redis.Nil) {
 				continue
 			}
 			return err
 		}
-		log.Infof("Received message to channel: %s", channel)
 		if err := json.Unmarshal([]byte(msg), &task); err != nil {
-			log.Errorf("Error unmarshalling task: %v", err)
+			log.Errorf("Consumer %d error unmarshalling task: %v", consumerID, err)
 			continue
 		}
-		r.ch <- task
-		log.Infof("Task sent to internal channel.")
+		log.Infof("consumer %d received task id: %d", consumerID, task.ID)
+		r.taskChannel <- task
+		log.Infof("consumer %d sent task to internal channel", consumerID)
 	}
+}
+
+func (r *taskQueue) StartConsume() error {
+	for i := 1; i <= r.consumerCount; i++ {
+		go func(consumerID int) {
+			if err := r.SubscribeTask(consumerID); err != nil {
+				log.Errorf("consumer %d error subscribing to channel: %v", consumerID, err)
+			}
+		}(i)
+	}
+	return nil
 }

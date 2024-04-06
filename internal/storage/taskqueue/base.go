@@ -6,16 +6,31 @@ import (
 )
 
 type TaskQueue interface {
-	PublishTask(channel string, task interface{}) error
-	SubscribeTask(channel string) error
+	PublishTask(task interface{}) error
+	SubscribeTask(consumerID int) error
+	StartConsume() error
 }
 
 type taskQueue struct {
-	rdb *redis.Client
-	ch  chan model.MailTaskQueue
+	consumerCount int
+	queueName     string
+	rdb           *redis.Client
+	taskChannel   chan model.MailTaskQueue
 }
 
 type Option func(*taskQueue)
+
+func WithConsumerCount(count int) Option {
+	return func(r *taskQueue) {
+		r.consumerCount = count
+	}
+}
+
+func WithQueueName(name string) Option {
+	return func(r *taskQueue) {
+		r.queueName = name
+	}
+}
 
 func WithRedisClient(rdb *redis.Client) Option {
 	return func(r *taskQueue) {
@@ -23,9 +38,9 @@ func WithRedisClient(rdb *redis.Client) Option {
 	}
 }
 
-func WithChannel(ch chan model.MailTaskQueue) Option {
+func WithTaskChannel(ch chan model.MailTaskQueue) Option {
 	return func(r *taskQueue) {
-		r.ch = ch
+		r.taskChannel = ch
 	}
 }
 

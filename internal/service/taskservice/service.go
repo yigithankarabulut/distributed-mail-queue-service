@@ -2,7 +2,6 @@ package taskservice
 
 import (
 	"context"
-
 	dtoreq "github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/req"
 	dtores "github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/res"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/model"
@@ -27,7 +26,7 @@ func (s *taskService) EnqueueMailTask(ctx context.Context, request dtoreq.TaskEn
 		if err != nil {
 			return dtores.TaskEnqueueResponse{}, err
 		}
-		if err := s.redisClient.PublishTask(constant.RedisMailQueueChannel, task); err != nil {
+		if err := s.redisClient.PublishTask(task); err != nil {
 			return dtores.TaskEnqueueResponse{}, err
 		}
 		res.TaskID = task.ID
@@ -60,11 +59,33 @@ func (s *taskService) GetAllFailedQueuedTasks(ctx context.Context, request dtore
 	case <-ctx.Done():
 		return dtores.GetAllFailedTasksResponse{}, ctx.Err()
 	default:
-		tasks, err := s.taskStorage.GetAllByStatus(ctx, constant.StatusFailed, request.UserID)
+		tasks, err := s.taskStorage.GetAllByStatusWithUserID(ctx, constant.StatusFailed, request.UserID)
 		if err != nil {
 			return dtores.GetAllFailedTasksResponse{}, err
 		}
 		res.ToMailTaskQueue(tasks)
 		return res, nil
+	}
+}
+
+func (s *taskService) FindUnprocessedTasksAndEnqueue(ctx context.Context) error {
+	var (
+		tasks []model.MailTaskQueue
+		err   error
+	)
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+		tasks, err = s.taskStorage.GetAllByStatus(ctx, constant.StatusQueued)
+		if err != nil {
+			return err
+		}
+		for _, task := range tasks {
+			if err := s.redisClient.PublishTask(task); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 }

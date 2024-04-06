@@ -1,27 +1,35 @@
 package workerservice
 
 import (
+	"context"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/storage/taskqueue"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/storage/taskstorage"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/model"
-	"gorm.io/gorm"
 )
 
 type IWorker interface {
 	TriggerWorker()
+	SendMail(ctx context.Context, task model.MailTaskQueue) error
 }
 
 type worker struct {
-	id        uint32
-	db        *gorm.DB
-	taskqueue taskqueue.TaskQueue
-	ch        chan model.MailTaskQueue
+	id          uint32
+	taskStorage taskstorage.TaskStorer
+	taskqueue   taskqueue.TaskQueue
+	taskChannel chan model.MailTaskQueue
 }
 
 type Option func(*worker)
 
-func WithDB(db *gorm.DB) Option {
+func WithID(id int) Option {
 	return func(w *worker) {
-		w.db = db
+		w.id = uint32(id)
+	}
+}
+
+func WithTaskStorage(rds taskstorage.TaskStorer) Option {
+	return func(w *worker) {
+		w.taskStorage = rds
 	}
 }
 
@@ -33,12 +41,12 @@ func WithTaskQueue(rds taskqueue.TaskQueue) Option {
 
 func WithChannel(ch chan model.MailTaskQueue) Option {
 	return func(w *worker) {
-		w.ch = ch
+		w.taskChannel = ch
 	}
 }
 
-func New(id int, opts ...Option) IWorker {
-	w := &worker{id: uint32(id)}
+func New(opts ...Option) IWorker {
+	w := &worker{}
 	for _, opt := range opts {
 		opt(w)
 	}
