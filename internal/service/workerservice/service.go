@@ -13,9 +13,11 @@ func (c *worker) TriggerWorker() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	for task := range c.taskChannel {
-		if err := c.SendMail(ctx, task); err != nil {
-			log.Errorf("worker %d error sending mail: %v", c.id, err)
-		}
+		go func() {
+			if err := c.SendMail(ctx, task); err != nil {
+				log.Errorf("worker %d error sending mail: %v", c.id, err)
+			}
+		}()
 	}
 }
 

@@ -33,14 +33,14 @@ func (r *taskQueue) SubscribeTask(consumerID int) error {
 	ctx = context.Background()
 	log.Infof("consumer %d subscribed to channel: %s", consumerID, r.queueName)
 	for {
-		msg, err := r.rdb.LPop(ctx, r.queueName).Result()
+		result, err := r.rdb.BRPop(ctx, 0, r.queueName).Result()
 		if err != nil {
 			if errors.Is(err, redis.Nil) {
 				continue
 			}
 			return err
 		}
-		if err := json.Unmarshal([]byte(msg), &task); err != nil {
+		if err := json.Unmarshal([]byte(result[1]), &task); err != nil {
 			log.Errorf("Consumer %d error unmarshalling task: %v", consumerID, err)
 			continue
 		}

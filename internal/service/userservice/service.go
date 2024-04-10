@@ -11,8 +11,6 @@ import (
 	"time"
 )
 
-// TODO: add custom error types
-
 func (s *userService) Register(ctx context.Context, req dtoreq.RegisterRequest) error {
 	var (
 		user model.User

@@ -193,7 +193,7 @@ func healthzCheck(apiserv *apiServer) {
 func appendDepends(apiserv *apiServer) {
 	packages := pkg.New()
 	cronService := cron.NewCronService()
-	TaskQueueChannel := make(chan model.MailTaskQueue, 100)
+	TaskQueueChannel := make(chan model.MailTaskQueue, WorkerCount)
 
 	userStorage := userstorage.New(userstorage.WithUserDB(postgres.DB))
 	taskStorage := taskstorage.New(taskstorage.WithTaskDB(postgres.DB))
