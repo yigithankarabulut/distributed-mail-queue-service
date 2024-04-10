@@ -3,12 +3,9 @@ package apiserver
 import (
 	"context"
 	"fmt"
-	"github.com/go-co-op/gocron/v2"
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
-	"github.com/google/uuid"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/config"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/service/taskservice"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/service/userservice"
@@ -22,6 +19,8 @@ import (
 	"github.com/yigithankarabulut/distributed-mail-queue-service/model"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/constant"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/cron"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/middleware"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/postgres"
 	redisclient "github.com/yigithankarabulut/distributed-mail-queue-service/pkg/redis"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/releaseinfo"
@@ -30,7 +29,6 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
-	"time"
 )
 
 const (
@@ -171,7 +169,7 @@ func initializeApp(apiserv *apiServer) {
 		}, ",")
 	apiserv.app.Use(cors.New(corsConfig))
 	apiserv.app.Use(recover.New())
-	apiserv.app.Use(httpLoggingMiddleware(apiserv.logger, apiserv.app))
+	apiserv.app.Use(middleware.HttpLoggingMiddleware(apiserv.logger, apiserv.app))
 }
 
 // healthzCheck adds health endpoints to the apiserver.
@@ -194,6 +192,7 @@ func healthzCheck(apiserv *apiServer) {
 // appendDepends create instances from all layers and append them together. Then add it to the fiber by calling the AddRoutes method of all its handlers.
 func appendDepends(apiserv *apiServer) {
 	packages := pkg.New()
+	cronService := cron.NewCronService()
 	TaskQueueChannel := make(chan model.MailTaskQueue, 100)
 
 	userStorage := userstorage.New(userstorage.WithUserDB(postgres.DB))
@@ -215,30 +214,19 @@ func appendDepends(apiserv *apiServer) {
 		taskservice.WithUserStorage(userStorage),
 		taskservice.WithRedisClient(taskQueue),
 	)
-	if err := taskService.FindUnprocessedTasksAndEnqueue(context.Background()); err != nil {
-		apiserv.logger.Error("error finding unprocessed tasks", "error", err)
-	}
-
 	if err := taskQueue.StartConsume(); err != nil {
 		apiserv.logger.Error("error starting consume", "error", err)
 	}
-	s, err := gocron.NewScheduler()
-	if err != nil {
-		apiserv.logger.Error("error creating scheduler", "error", err)
+	if err := cronService.RegisterJob(
+		cron.CronJob{
+			Name:     "FindUnprocessedTasksAndEnqueue",
+			Schedule: "@every 5m",
+			Func:     taskService.FindUnprocessedTasksAndEnqueue,
+		},
+	); err != nil {
+		apiserv.logger.Error("error registering cron job", "error", err)
 	}
-
-	cronJob := &CronJob{
-		JobName:   "FindUnprocessedTasksAndEnqueue",
-		Scheduler: s,
-		Task:      gocron.NewTask(taskService.FindUnprocessedTasksAndEnqueue, context.TODO()),
-		Duration:  gocron.DurationJob(10 * time.Second),
-	}
-	jobID := cronJob.AddJob()
-	if jobID == uuid.Nil {
-		apiserv.logger.Error("error adding job")
-	}
-	log.Infof("job id: %s", jobID)
-	s.Start()
+	cronService.Start()
 
 	workers := make([]workerservice.IWorker, WorkerCount)
 	for i := 0; i < WorkerCount; i++ {

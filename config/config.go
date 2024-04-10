@@ -11,7 +11,6 @@ type Config struct {
 	Database Database `mapstructure:"database"`
 	Redis    Redis    `mapstructure:"redis"`
 	Port     string   `mapstructure:"port"`
-	//RabbitMQ RabbitMQ `mapstructure:"rabbitmq"`
 }
 
 // Database struct stores the configuration of the database
@@ -27,14 +26,6 @@ type Database struct {
 type Redis struct {
 	Host string `mapstructure:"host"`
 	Port string `mapstructure:"port"`
-}
-
-// RabbitMQ struct stores the configuration of the RabbitMQ
-type RabbitMQ struct {
-	Host     string `mapstructure:"host"`
-	Port     string `mapstructure:"port"`
-	User     string `mapstructure:"user"`
-	Password string `mapstructure:"pass"`
 }
 
 func LoadDatabase() (Database, error) {
@@ -65,30 +56,12 @@ func LoadRedis() (Redis, error) {
 	return redis, nil
 }
 
-func LoadRabbitMQ() (RabbitMQ, error) {
-	var rmq RabbitMQ
-	rmq.Host = os.Getenv("RABBITMQ_HOST")
-	rmq.Port = os.Getenv("RABBITMQ_PORT")
-	rmq.User = os.Getenv("RABBITMQ_USER")
-	rmq.Password = os.Getenv("RABBITMQ_PASS")
-	for _, env := range []string{"RABBITMQ_HOST", "RABBITMQ_PORT", "RABBITMQ_USER", "RABBITMQ_PASS"} {
-		if os.Getenv(env) == "" {
-			return rmq, errors.New(env + " is required")
-		}
-	}
-	return rmq, nil
-}
-
 func LoadConfig() (*Config, error) {
 	var Config Config
 	db, err := LoadDatabase()
 	if err != nil {
 		return nil, err
 	}
-	//rmq, err := LoadRabbitMQ()
-	//if err != nil {
-	//	return nil, err
-	//}
 	redis, err := LoadRedis()
 	if err != nil {
 		return nil, err
@@ -106,7 +79,6 @@ func LoadConfig() (*Config, error) {
 	}
 	Config.Database = db
 	Config.Redis = redis
-	//Config.RabbitMQ = rmq
 	Config.Port = port
 	return &Config, nil
 }

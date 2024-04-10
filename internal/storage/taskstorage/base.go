@@ -11,7 +11,7 @@ type TaskStorer interface {
 	Insert(ctx context.Context, task model.MailTaskQueue, tx ...*gorm.DB) (model.MailTaskQueue, error)
 	GetByID(ctx context.Context, id uint) (model.MailTaskQueue, error)
 	GetAll(ctx context.Context, userID uint) ([]model.MailTaskQueue, error)
-	GetAllByStatus(ctx context.Context, state int) ([]model.MailTaskQueue, error)
+	GetAllByUnprocessedTasks(ctx context.Context) ([]model.MailTaskQueue, error)
 	GetAllByStatusWithUserID(ctx context.Context, state int, userID uint) ([]model.MailTaskQueue, error)
 	Update(ctx context.Context, task model.MailTaskQueue, tx ...*gorm.DB) error
 	Delete(ctx context.Context, id uint) error

@@ -2,6 +2,7 @@ package workerservice
 
 import (
 	"context"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/service/mailservice"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/storage/taskqueue"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/storage/taskstorage"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/model"
@@ -14,6 +15,7 @@ type IWorker interface {
 
 type worker struct {
 	id          uint32
+	mailService mailservice.MailService
 	taskStorage taskstorage.TaskStorer
 	taskqueue   taskqueue.TaskQueue
 	taskChannel chan model.MailTaskQueue

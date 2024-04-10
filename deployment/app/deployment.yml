@@ -18,19 +18,19 @@ spec:
           ports:
             - containerPort: 8080
           env:
-            - name: POSTGRES_HOST
-              value: $POSTGRES_HOST
-            - name: POSTGRES_PORT
-              value: $POSTGRES_PORT
+            - name: DB_HOST
+              value: postgres
+            - name: DB_PORT
+              value: "5432"
             - name: REDIS_HOST
               value: redis
             - name: REDIS_PORT
               value: "6379"
-            - name: POSTGRES_USER
-              value: $POSTGRES_USER
-            - name: POSTGRES_PASSWORD
-              value: $POSTGRES_PASSWORD
-            - name: POSTGRES_DB
-              value: $POSTGRES_DB
+            - name: DB_USER
+              value: ykarabul
+            - name: DB_PASSWORD
+              value: yigitsh
+            - name: DB_NAME
+              value: DMQS
             - name: JWT_SECRET
-              value: $JWT_SECRET
+              value: a1b2c3d4e5f6g7h8i9j0

@@ -22,6 +22,11 @@ const (
 )
 
 const (
+	MaxTryCount             = 3
+	UnprocessedTaskInterval = 5 * time.Second
+)
+
+const (
 	ContentType    = "Content-Type"
 	Authorization  = "Authorization"
 	AllowedOrigins = "*"
@@ -33,4 +38,5 @@ const (
 	ServerReadTimeout    = 5 * time.Second
 	ServerWriteTimeout   = 5 * time.Second
 	ServerIdleTimeout    = 5 * time.Second
+	TaskCancelTimeout    = 5 * time.Second
 )

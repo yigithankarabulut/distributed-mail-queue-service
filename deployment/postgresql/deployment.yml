@@ -1,29 +1,19 @@
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: v1
+kind: Pod
 metadata:
-  name: postgresql
+  name: postgres-pod
+  labels:
+    app: postgres
 spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: postgresql
-  template:
-    metadata:
-      labels:
-        app: postgresql
-    spec:
-      containers:
-        - name: postgresql
-          image: postgres:latest
-          ports:
-            - containerPort: 5432
-          env:
-            - name: POSTGRES_DB
-              value: your-database-name
-            - name: POSTGRES_USER
-              value: your-postgres-username
-            - name: POSTGRES_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: postgresql-secrets
-                  key: postgres-password
+  containers:
+    - name: postgres-container
+      image: dmqs-postgres
+      ports:
+        - containerPort: 5432
+      env:
+        - name: POSTGRES_DB
+          value: DMQS
+        - name: POSTGRES_USER
+          value: ykarabul
+        - name: POSTGRES_PASSWORD
+          value: yigitsh

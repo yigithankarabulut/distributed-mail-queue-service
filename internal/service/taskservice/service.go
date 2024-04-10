@@ -6,6 +6,7 @@ import (
 	dtores "github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/res"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/model"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/constant"
+	"log"
 )
 
 func (s *taskService) EnqueueMailTask(ctx context.Context, request dtoreq.TaskEnqueueRequest) (dtores.TaskEnqueueResponse, error) {
@@ -68,24 +69,23 @@ func (s *taskService) GetAllFailedQueuedTasks(ctx context.Context, request dtore
 	}
 }
 
-func (s *taskService) FindUnprocessedTasksAndEnqueue(ctx context.Context) error {
+func (s *taskService) FindUnprocessedTasksAndEnqueue() {
 	var (
 		tasks []model.MailTaskQueue
 		err   error
 	)
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	default:
-		tasks, err = s.taskStorage.GetAllByStatus(ctx, constant.StatusQueued)
-		if err != nil {
-			return err
-		}
-		for _, task := range tasks {
-			if err := s.redisClient.PublishTask(task); err != nil {
-				return err
-			}
-		}
-		return nil
+	log.Println("Finding unprocessed tasks and enqueueing...")
+	ctx, cancel := context.WithTimeout(context.Background(), constant.TaskCancelTimeout)
+	defer cancel()
+	tasks, err = s.taskStorage.GetAllByUnprocessedTasks(ctx)
+	if err != nil {
+		log.Printf("error finding unprocessed tasks: %v", err)
+		return
 	}
+	for _, task := range tasks {
+		if err := s.redisClient.PublishTask(task); err != nil {
+			log.Printf("error publishing task: %v", err)
+		}
+	}
+	log.Printf("%d unprocessed tasks enqueued", len(tasks))
 }
