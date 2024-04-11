@@ -1,14 +1,15 @@
 package taskqueue
 
 import (
+	"context"
 	"github.com/redis/go-redis/v9"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/model"
 )
 
 type TaskQueue interface {
 	PublishTask(task interface{}) error
-	SubscribeTask(consumerID int) error
-	StartConsume() error
+	SubscribeTask(ctx context.Context, consumerID int) error
+	StartConsume(ctx context.Context) <-chan error
 }
 
 type taskQueue struct {

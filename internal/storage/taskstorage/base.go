@@ -15,10 +15,6 @@ type TaskStorer interface {
 	GetAllByStatusWithUserID(ctx context.Context, state int, userID uint) ([]model.MailTaskQueue, error)
 	Update(ctx context.Context, task model.MailTaskQueue, tx ...*gorm.DB) error
 	Delete(ctx context.Context, id uint) error
-	CreateTx() *gorm.DB
-	CommitTx(tx *gorm.DB)
-	RollbackTx(tx *gorm.DB)
-	SetTx(tx ...*gorm.DB) *gorm.DB
 }
 
 // taskStorage is a storage for mail tasks

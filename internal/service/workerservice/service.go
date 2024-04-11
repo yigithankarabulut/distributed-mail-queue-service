@@ -14,14 +14,14 @@ func (c *worker) TriggerWorker() {
 	defer cancel()
 	for task := range c.taskChannel {
 		go func() {
-			if err := c.SendMail(ctx, task); err != nil {
+			if err := c.HandleTask(ctx, task); err != nil {
 				log.Errorf("worker %d error sending mail: %v", c.id, err)
 			}
 		}()
 	}
 }
 
-func (c *worker) SendMail(ctx context.Context, task model.MailTaskQueue) error {
+func (c *worker) HandleTask(ctx context.Context, task model.MailTaskQueue) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()

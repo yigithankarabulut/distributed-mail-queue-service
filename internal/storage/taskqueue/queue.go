@@ -24,39 +24,44 @@ func (r *taskQueue) PublishTask(task interface{}) error {
 	return nil
 }
 
-func (r *taskQueue) SubscribeTask(consumerID int) error {
+func (r *taskQueue) SubscribeTask(ctx context.Context, consumerID int) error {
 	var (
-		ctx  context.Context
 		task model.MailTaskQueue
 	)
-
-	ctx = context.Background()
 	log.Infof("consumer %d subscribed to channel: %s", consumerID, r.queueName)
+
 	for {
-		result, err := r.rdb.BRPop(ctx, 0, r.queueName).Result()
-		if err != nil {
-			if errors.Is(err, redis.Nil) {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			result, err := r.rdb.BRPop(ctx, 0, r.queueName).Result()
+			if err != nil {
+				if errors.Is(err, redis.Nil) {
+					continue
+				}
+				return err
+			}
+			if err := json.Unmarshal([]byte(result[1]), &task); err != nil {
+				log.Errorf("Consumer %d error unmarshalling task: %v", consumerID, err)
 				continue
 			}
-			return err
+			log.Infof("consumer %d received task id: %d", consumerID, task.ID)
+			r.taskChannel <- task
+			log.Infof("consumer %d sent task to internal channel", consumerID)
 		}
-		if err := json.Unmarshal([]byte(result[1]), &task); err != nil {
-			log.Errorf("Consumer %d error unmarshalling task: %v", consumerID, err)
-			continue
-		}
-		log.Infof("consumer %d received task id: %d", consumerID, task.ID)
-		r.taskChannel <- task
-		log.Infof("consumer %d sent task to internal channel", consumerID)
 	}
+
 }
 
-func (r *taskQueue) StartConsume() error {
-	for i := 1; i <= r.consumerCount; i++ {
+func (r *taskQueue) StartConsume(ctx context.Context) <-chan error {
+	errCh := make(chan error)
+	for i := 0; i < r.consumerCount; i++ {
 		go func(consumerID int) {
-			if err := r.SubscribeTask(consumerID); err != nil {
-				log.Errorf("consumer %d error subscribing to channel: %v", consumerID, err)
+			if err := r.SubscribeTask(ctx, consumerID); err != nil {
+				errCh <- err
 			}
 		}(i)
 	}
-	return nil
+	return errCh
 }

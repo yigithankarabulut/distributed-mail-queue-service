@@ -7,8 +7,6 @@ import (
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/validator"
 )
 
-var PackagesInstance *Packages
-
 type Packages struct {
 	JwtUtils  jwtutils.IJwtUtils
 	PassUtils passutils.IPassUtils
@@ -16,14 +14,36 @@ type Packages struct {
 	Response  response.IResponse
 }
 
-func New() *Packages {
-	if PackagesInstance != nil {
-		return PackagesInstance
+type Option func(*Packages)
+
+func WithJwtUtils(jwtUtils jwtutils.IJwtUtils) Option {
+	return func(p *Packages) {
+		p.JwtUtils = jwtUtils
 	}
-	return &Packages{
-		JwtUtils:  jwtutils.New(),
-		PassUtils: passutils.New(),
-		Validator: validator.New(),
-		Response:  response.New(),
+}
+
+func WithPassUtils(passUtils passutils.IPassUtils) Option {
+	return func(p *Packages) {
+		p.PassUtils = passUtils
 	}
+}
+
+func WithValidator(validator validator.IValidate) Option {
+	return func(p *Packages) {
+		p.Validator = validator
+	}
+}
+
+func WithResponse(response response.IResponse) Option {
+	return func(p *Packages) {
+		p.Response = response
+	}
+}
+
+func New(opts ...Option) *Packages {
+	p := &Packages{}
+	for _, opt := range opts {
+		opt(p)
+	}
+	return p
 }

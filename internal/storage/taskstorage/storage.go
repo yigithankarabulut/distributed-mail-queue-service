@@ -67,22 +67,3 @@ func (s *taskStorage) Delete(ctx context.Context, id uint) error {
 	}
 	return nil
 }
-
-func (s *taskStorage) CreateTx() *gorm.DB {
-	return s.db.Begin()
-}
-
-func (s *taskStorage) CommitTx(tx *gorm.DB) {
-	tx.Commit()
-}
-
-func (s *taskStorage) RollbackTx(tx *gorm.DB) {
-	tx.Rollback()
-}
-
-func (s *taskStorage) SetTx(tx ...*gorm.DB) *gorm.DB {
-	if len(tx) > 0 {
-		s.db = tx[0]
-	}
-	return s.db
-}

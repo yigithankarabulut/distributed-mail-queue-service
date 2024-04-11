@@ -5,7 +5,6 @@ import (
 	"fmt"
 	dtoreq "github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/req"
 	dtores "github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/res"
-	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/service/mailservice"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/model"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/constant"
 	"time"
@@ -36,10 +35,10 @@ func (s *userService) Register(ctx context.Context, req dtoreq.RegisterRequest) 
 			Subject:        constant.Test_Subject,
 			Body:           constant.Test_Body,
 		}
-		testMail := mailservice.New( // TODO: append interface to the function name
-			mailservice.WithTask(testTask),
-		)
-		if err := testMail.SendMail(testMail.NewDialer(), testMail.NewMessage()); err != nil {
+		if err := s.mailService.AddTask(testTask); err != nil {
+			return fmt.Errorf("error adding test task: %w", err)
+		}
+		if err := s.mailService.SendMail(s.mailService.NewDialer(), s.mailService.NewMessage()); err != nil {
 			return fmt.Errorf("error sending test mail: %w", err)
 		}
 		if err = s.userStorage.Insert(ctx, user); err != nil {
@@ -91,8 +90,4 @@ func (s *userService) GetUser(ctx context.Context, req dtoreq.GetUserRequest) (d
 		res.FromUser(user)
 		return res, nil
 	}
-}
-
-func (s *userService) UpdateUser(ctx context.Context, req dtoreq.UpdateUserRequest) (dtores.UpdateUserResponse, error) {
-	return dtores.UpdateUserResponse{}, nil
 }

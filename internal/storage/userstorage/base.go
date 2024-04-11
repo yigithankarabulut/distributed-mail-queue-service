@@ -12,6 +12,7 @@ type UserStorer interface {
 	GetByID(ctx context.Context, id uint) (model.User, error)
 	GetByEmail(ctx context.Context, email string) (model.User, error)
 	Update(ctx context.Context, user model.User, tx ...*gorm.DB) error
+	Delete(ctx context.Context, id uint) error
 	CreateTx() *gorm.DB
 	CommitTx(tx *gorm.DB)
 	RollbackTx(tx *gorm.DB)

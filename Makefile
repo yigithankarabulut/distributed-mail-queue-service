@@ -33,9 +33,10 @@ apply:
 	kubectl wait --for=condition=available deployment/redis --timeout=300s
 	kubectl apply -f $(GO_API_YAML)
 	kubectl apply -f $(GO_API_SERVICE_YAML)
-	kubectl wait --for=condition=available deployment/go-api --timeout=300s
-	eval $(minikube docker-env)
+
+hpa:
 	minikube addons enable metrics-server
+	eval $(minikube docker-env)
 	kubectl apply -f $(HPA_YAML)
 
 delete:
@@ -47,4 +48,4 @@ delete:
 	kubectl delete -f $(GO_API_SERVICE_YAML)
 	kubectl delete -f $(HPA_YAML)
 
-PHONY: all cluster clean re apply delete
+PHONY: all cluster clean re apply delete hpa

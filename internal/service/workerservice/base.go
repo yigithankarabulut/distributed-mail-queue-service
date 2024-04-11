@@ -10,7 +10,7 @@ import (
 
 type IWorker interface {
 	TriggerWorker()
-	SendMail(ctx context.Context, task model.MailTaskQueue) error
+	HandleTask(ctx context.Context, task model.MailTaskQueue) error
 }
 
 type worker struct {

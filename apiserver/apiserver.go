@@ -20,9 +20,13 @@ import (
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/constant"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/cron"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/jwtutils"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/middleware"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/passutils"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/postgres"
 	redisclient "github.com/yigithankarabulut/distributed-mail-queue-service/pkg/redis"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/response"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/validator"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/releaseinfo"
 	"log/slog"
 	"os"
@@ -191,19 +195,36 @@ func healthzCheck(apiserv *apiServer) {
 
 // appendDepends create instances from all layers and append them together. Then add it to the fiber by calling the AddRoutes method of all its handlers.
 func appendDepends(apiserv *apiServer) {
-	packages := pkg.New()
+	packages := pkg.New(
+		pkg.WithValidator(validator.New()),
+		pkg.WithJwtUtils(jwtutils.New()),
+		pkg.WithPassUtils(passutils.New()),
+		pkg.WithResponse(response.New()),
+	)
 	cronService := cron.NewCronService()
 	TaskQueueChannel := make(chan model.MailTaskQueue, WorkerCount)
 
-	userStorage := userstorage.New(userstorage.WithUserDB(postgres.DB))
-	taskStorage := taskstorage.New(taskstorage.WithTaskDB(postgres.DB))
 	taskQueue := taskqueue.New(
 		taskqueue.WithTaskChannel(TaskQueueChannel),
 		taskqueue.WithConsumerCount(QueueConsumerCount),
 		taskqueue.WithQueueName(constant.RedisMailQueueChannel),
 		taskqueue.WithRedisClient(redisclient.GetRedisClient()),
 	)
+	go func() {
+		errCount := 0
+		errCh := taskQueue.StartConsume(context.Background())
+		select {
+		case err := <-errCh:
+			apiserv.logger.Error("error consuming task", "error", err)
+			errCount++
+			if errCount == QueueConsumerCount {
+				apiserv.logger.Error("all consumers failed")
+			}
+		}
+	}()
 
+	userStorage := userstorage.New(userstorage.WithUserDB(postgres.DB))
+	taskStorage := taskstorage.New(taskstorage.WithTaskDB(postgres.DB))
 	userService := userservice.New(
 		userservice.WithUserStorage(userStorage),
 		userservice.WithTaskStorage(taskStorage),
@@ -214,9 +235,6 @@ func appendDepends(apiserv *apiServer) {
 		taskservice.WithUserStorage(userStorage),
 		taskservice.WithRedisClient(taskQueue),
 	)
-	if err := taskQueue.StartConsume(); err != nil {
-		apiserv.logger.Error("error starting consume", "error", err)
-	}
 	if err := cronService.RegisterJob(
 		cron.CronJob{
 			Name:     "FindUnprocessedTasksAndEnqueue",
