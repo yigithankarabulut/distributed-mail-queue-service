@@ -11,10 +11,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to load config: %v", err)
 	}
-	if err := apiserver.NewApiServer(
+	apiserv := apiserver.New(
 		apiserver.WithConfig(Conf),
 		apiserver.WithServerEnv("development"),
-	); err != nil {
-		log.Fatalf("failed to start server: %v", err)
+	)
+	if err := apiserv.Run(); err != nil {
+		log.Fatalf("failed to run server: %v", err)
 	}
 }

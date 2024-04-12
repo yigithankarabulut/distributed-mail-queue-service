@@ -64,37 +64,7 @@ func Test_userService_Register(t *testing.T) {
 		mockUserStorer.errGetByEmail = nil
 	}
 	{
-		tc := "Case 4: Error Adding Test Task And Should Return Error"
-		mockUserStorer.errGetByEmail = errors.New("not found")
-		mockMailService.errAddTask = errors.New("invalid task")
-
-		err := userService.Register(context.Background(), dtoreq.RegisterRequest{})
-		want := "error adding test task: invalid task"
-		t.Run(tc, func(t *testing.T) {
-			if err.Error() != want {
-				t.Errorf("Expected error to be %s but got %v", want, err)
-			}
-		})
-		mockMailService.errAddTask = nil
-		mockUserStorer.errGetByEmail = nil
-	}
-	{
-		tc := "Case 5: Error Sending Test Mail And Should Return Error"
-		mockUserStorer.errGetByEmail = errors.New("not found")
-		mockMailService.errSendMail = errors.New("invalid mail")
-
-		err := userService.Register(context.Background(), dtoreq.RegisterRequest{})
-		want := "error sending test mail: invalid mail"
-		t.Run(tc, func(t *testing.T) {
-			if err.Error() != want {
-				t.Errorf("Expected error to be %s but got %v", want, err)
-			}
-		})
-		mockMailService.errSendMail = nil
-		mockUserStorer.errGetByEmail = nil
-	}
-	{
-		tc := "Case 6: Error Inserting User And Should Return Error"
+		tc := "Case 4: Error Inserting User And Should Return Error"
 		mockUserStorer.errGetByEmail = errors.New("not found")
 		mockUserStorer.errInsert = errors.New("insert error")
 
@@ -109,7 +79,7 @@ func Test_userService_Register(t *testing.T) {
 		mockUserStorer.errGetByEmail = nil
 	}
 	{
-		tc := "Case 7: Success And Should Return Nil"
+		tc := "Case 5: Success And Should Return Nil"
 		mockUserStorer.errGetByEmail = errors.New("not found")
 		mockUserStorer.errInsert = nil
 

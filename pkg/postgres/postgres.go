@@ -3,11 +3,11 @@ package postgres
 import (
 	"database/sql"
 	"fmt"
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/config"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/model"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
-	"log"
 )
 
 var DB *gorm.DB
@@ -28,7 +28,7 @@ func ConnectPQ(config config.Database) (*gorm.DB, error) {
 			return nil, err
 		}
 	}
-	log.Printf("Connected to postgres at %s:%s", config.Host, config.Port)
+	log.Infof("connected to postgres: %s:%s", config.Host, config.Port)
 	return DB, nil
 }
 

@@ -30,7 +30,7 @@ func (s *mailService) AddTask(task model.MailTaskQueue) error {
 				}
 			}
 		} else {
-			if t.Field(i).Name == "Status" || t.Field(i).Name == "TryCount" {
+			if t.Field(i).Name == "Status" || t.Field(i).Name == "TryCount" || t.Field(i).Name == "CreatedAt" || t.Field(i).Name == "UpdatedAt" || t.Field(i).Name == "UserID" {
 				continue
 			}
 			if field.IsZero() {
@@ -81,7 +81,6 @@ func (s *mailService) SendMail(d Dialer, m *gomail.Message) error {
 	}
 	ch := make(chan *gomail.Message)
 	errChan := make(chan error, 1)
-
 	go func() {
 		var s gomail.SendCloser
 		var err error

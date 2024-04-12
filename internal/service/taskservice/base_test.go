@@ -95,7 +95,7 @@ type mockTaskQueue struct {
 	errStartConsume  <-chan error
 }
 
-func (m *mockTaskQueue) PublishTask(task interface{}) error {
+func (m *mockTaskQueue) PublishTask(ctx context.Context, task interface{}) error {
 	return m.errPublishTask
 }
 

@@ -25,7 +25,7 @@ type CustomClaims struct {
 // GenerateJwtToken generates a jwt token.
 func (j *JwtUtils) GenerateJwtToken(userID uint, expiration time.Duration) (string, error) {
 	secret := os.Getenv("JWT_SECRET")
-	claims := CustomClaims{
+	claims := &CustomClaims{
 		userID,
 		jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiration)),

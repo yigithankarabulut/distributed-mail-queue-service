@@ -7,7 +7,7 @@ import (
 )
 
 type TaskQueue interface {
-	PublishTask(task interface{}) error
+	PublishTask(ctx context.Context, task interface{}) error
 	SubscribeTask(ctx context.Context, consumerID int) error
 	StartConsume(ctx context.Context) <-chan error
 }

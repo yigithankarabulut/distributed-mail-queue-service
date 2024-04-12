@@ -3,7 +3,7 @@ package constant
 import "time"
 
 const (
-	Test_To      = "dobrainmusic@gmail.com"
+	Test_To      = "yigithannkarabulutt@gmail.com"
 	Test_Subject = "Test Mail"
 	Test_Body    = "Hello, this is a test email!"
 )
@@ -22,8 +22,7 @@ const (
 )
 
 const (
-	MaxTryCount             = 3
-	UnprocessedTaskInterval = 5 * time.Second
+	MaxTryCount = 3
 )
 
 const (

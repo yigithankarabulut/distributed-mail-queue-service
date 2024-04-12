@@ -6,7 +6,6 @@ import (
 	dtoreq "github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/req"
 	dtores "github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/res"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/model"
-	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/constant"
 	"time"
 )
 
@@ -23,24 +22,11 @@ func (s *userService) Register(ctx context.Context, req dtoreq.RegisterRequest) 
 		if _, err := s.userStorage.GetByEmail(ctx, req.Email); err == nil {
 			return fmt.Errorf("email already exists")
 		}
-		hashPwd, err := s.PassUtils.HashPassword(req.Password)
+		hashPwd, err := s.Packages.PassUtils.HashPassword(req.Password)
 		if err != nil {
 			return fmt.Errorf("error hashing password: %w", err)
 		}
 		req.Password = hashPwd
-		user = req.ConvertToUser()
-		testTask := model.MailTaskQueue{
-			User:           user,
-			RecipientEmail: constant.Test_To,
-			Subject:        constant.Test_Subject,
-			Body:           constant.Test_Body,
-		}
-		if err := s.mailService.AddTask(testTask); err != nil {
-			return fmt.Errorf("error adding test task: %w", err)
-		}
-		if err := s.mailService.SendMail(s.mailService.NewDialer(), s.mailService.NewMessage()); err != nil {
-			return fmt.Errorf("error sending test mail: %w", err)
-		}
 		if err = s.userStorage.Insert(ctx, user); err != nil {
 			return fmt.Errorf("error inserting user: %w", err)
 		}

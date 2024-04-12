@@ -33,9 +33,11 @@ func Test_userStorage_Insert(t *testing.T) {
 			SmtpHost:     "test",
 			Password:     "test",
 		})
-		if err != nil {
-			t.Errorf("%s: Expected err to be nil but got %v", tc, err)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err != nil {
+				t.Errorf("%s: Expected err to be nil but got %v", tc, err)
+			}
+		})
 	}
 	{
 		tc := "Case 2: User is invalid and there is an error"
@@ -49,9 +51,11 @@ func Test_userStorage_Insert(t *testing.T) {
 			Email:        "test",
 			SmtpPassword: "test",
 		})
-		if err == nil {
-			t.Errorf("%s: Expected err to be not nil but got nil", tc)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err == nil {
+				t.Errorf("%s: Expected err to be not nil but got nil", tc)
+			}
+		})
 	}
 }
 
@@ -70,9 +74,11 @@ func Test_userStorage_GetByEmail(t *testing.T) {
 				AddRow(1, "test", "test", "test", 1, "test", "test"))
 		storage := userstorage.New(userstorage.WithUserDB(db))
 		_, err := storage.GetByEmail(context.Background(), "test")
-		if err != nil {
-			t.Errorf("%s: Expected err to be nil but got %v", tc, err)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err != nil {
+				t.Errorf("%s: Expected err to be nil but got %v", tc, err)
+			}
+		})
 	}
 	{
 		tc := "Case 2: User not found and there is an error"
@@ -81,9 +87,11 @@ func Test_userStorage_GetByEmail(t *testing.T) {
 			WillReturnError(gorm.ErrRecordNotFound)
 		storage := userstorage.New(userstorage.WithUserDB(db))
 		_, err := storage.GetByEmail(context.Background(), "test")
-		if err == nil {
-			t.Errorf("%s: Expected err to be not nil but got nil", tc)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err == nil {
+				t.Errorf("%s: Expected err to be not nil but got nil", tc)
+			}
+		})
 	}
 }
 
@@ -102,9 +110,11 @@ func Test_userStorage_GetByID(t *testing.T) {
 				AddRow(1, "test", "test", "test", 1, "test", "test"))
 		storage := userstorage.New(userstorage.WithUserDB(db))
 		_, err := storage.GetByID(context.Background(), 1)
-		if err != nil {
-			t.Errorf("%s: Expected err to be nil but got %v", tc, err)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err != nil {
+				t.Errorf("%s: Expected err to be nil but got %v", tc, err)
+			}
+		})
 	}
 	{
 		tc := "Case 2: User not found and there is an error"
@@ -113,11 +123,12 @@ func Test_userStorage_GetByID(t *testing.T) {
 			WillReturnError(gorm.ErrRecordNotFound)
 		storage := userstorage.New(userstorage.WithUserDB(db))
 		_, err := storage.GetByID(context.Background(), 1)
-		if err == nil {
-			t.Errorf("%s: Expected err to be not nil but got nil", tc)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err == nil {
+				t.Errorf("%s: Expected err to be not nil but got nil", tc)
+			}
+		})
 	}
-
 }
 
 func Test_userStorage_Update(t *testing.T) {
@@ -143,9 +154,11 @@ func Test_userStorage_Update(t *testing.T) {
 			SmtpHost:     "test",
 			Password:     "test",
 		})
-		if err != nil {
-			t.Errorf("%s: Expected err to be nil but got %v", tc, err)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err != nil {
+				t.Errorf("%s: Expected err to be nil but got %v", tc, err)
+			}
+		})
 	}
 	{
 		tc := "Case 2: User is invalid and there is an error"
@@ -158,9 +171,11 @@ func Test_userStorage_Update(t *testing.T) {
 		err := storage.Update(context.Background(), model.User{
 			SmtpPassword: "test",
 		})
-		if err == nil {
-			t.Errorf("%s: Expected err to be not nil but got nil", tc)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err == nil {
+				t.Errorf("%s: Expected err to be not nil but got nil", tc)
+			}
+		})
 	}
 }
 
@@ -180,9 +195,11 @@ func Test_userStorage_Delete(t *testing.T) {
 		mock.ExpectClose()
 		storage := userstorage.New(userstorage.WithUserDB(db))
 		err := storage.Delete(context.Background(), 1)
-		if err != nil {
-			t.Errorf("%s: Expected err to be nil but got %v", tc, err)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err != nil {
+				t.Errorf("%s: Expected err to be nil but got %v", tc, err)
+			}
+		})
 	}
 	{
 		tc := "Case 2: User is not found and there is an error"
@@ -193,9 +210,11 @@ func Test_userStorage_Delete(t *testing.T) {
 		mock.ExpectClose()
 		storage := userstorage.New(userstorage.WithUserDB(db))
 		err := storage.Delete(context.Background(), 0)
-		if err == nil {
-			t.Errorf("%s: Expected err to be not nil but got nil", tc)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err == nil {
+				t.Errorf("%s: Expected err to be not nil but got nil", tc)
+			}
+		})
 	}
 }
 
@@ -210,9 +229,11 @@ func Test_userStorage_CommitTx(t *testing.T) {
 	storage := userstorage.New(userstorage.WithUserDB(db))
 	mock.ExpectBegin()
 	storage.CommitTx(db.Begin())
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("%s: Expected all expectations to be met but got %v", tc, err)
-	}
+	t.Run(tc, func(t *testing.T) {
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("%s: Expected all expectations to be met but got %v", tc, err)
+		}
+	})
 }
 
 func Test_userStorage_CreateTx(t *testing.T) {
@@ -226,9 +247,11 @@ func Test_userStorage_CreateTx(t *testing.T) {
 	storage := userstorage.New(userstorage.WithUserDB(db))
 	mock.ExpectBegin()
 	storage.CreateTx()
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("%s: Expected all expectations to be met but got %v", tc, err)
-	}
+	t.Run(tc, func(t *testing.T) {
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("%s: Expected all expectations to be met but got %v", tc, err)
+		}
+	})
 }
 
 func Test_userStorage_RollbackTx(t *testing.T) {
@@ -242,9 +265,11 @@ func Test_userStorage_RollbackTx(t *testing.T) {
 	storage := userstorage.New(userstorage.WithUserDB(db))
 	mock.ExpectBegin()
 	storage.RollbackTx(db.Begin())
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("%s: Expected all expectations to be met but got %v", tc, err)
-	}
+	t.Run(tc, func(t *testing.T) {
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("%s: Expected all expectations to be met but got %v", tc, err)
+		}
+	})
 }
 
 func Test_userStorage_SetTx(t *testing.T) {
@@ -258,7 +283,9 @@ func Test_userStorage_SetTx(t *testing.T) {
 	storage := userstorage.New(userstorage.WithUserDB(db))
 	mock.ExpectBegin()
 	storage.SetTx(db.Begin())
-	if err := mock.ExpectationsWereMet(); err != nil {
-		t.Errorf("%s: Expected all expectations to be met but got %v", tc, err)
-	}
+	t.Run(tc, func(t *testing.T) {
+		if err := mock.ExpectationsWereMet(); err != nil {
+			t.Errorf("%s: Expected all expectations to be met but got %v", tc, err)
+		}
+	})
 }

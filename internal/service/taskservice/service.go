@@ -27,7 +27,7 @@ func (s *taskService) EnqueueMailTask(ctx context.Context, request dtoreq.TaskEn
 		if err != nil {
 			return dtores.TaskEnqueueResponse{}, err
 		}
-		if err := s.redisClient.PublishTask(task); err != nil {
+		if err := s.redisClient.PublishTask(ctx, task); err != nil {
 			return dtores.TaskEnqueueResponse{}, err
 		}
 		res.TaskID = task.ID
@@ -60,7 +60,7 @@ func (s *taskService) GetAllFailedQueuedTasks(ctx context.Context, request dtore
 	case <-ctx.Done():
 		return dtores.GetAllFailedTasksResponse{}, ctx.Err()
 	default:
-		tasks, err := s.taskStorage.GetAllByStatusWithUserID(ctx, constant.StatusFailed, request.UserID)
+		tasks, err := s.taskStorage.GetAllByStatusWithUserID(ctx, constant.StatusCancelled, request.UserID)
 		if err != nil {
 			return dtores.GetAllFailedTasksResponse{}, err
 		}
@@ -83,7 +83,7 @@ func (s *taskService) FindUnprocessedTasksAndEnqueue() {
 		return
 	}
 	for _, task := range tasks {
-		if err := s.redisClient.PublishTask(task); err != nil {
+		if err := s.redisClient.PublishTask(ctx, task); err != nil {
 			log.Printf("error publishing task: %v", err)
 		}
 	}

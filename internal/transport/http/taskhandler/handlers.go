@@ -3,12 +3,11 @@ package taskhandler
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/req"
-	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/middleware"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/releaseinfo"
 )
 
 func (h *taskHandler) AddRoutes(r fiber.Router) {
-	r.Use(middleware.AuthMiddleware())
+	r.Use(h.Middleware.AuthMiddleware())
 	r.Post(releaseinfo.EnqueueMailApiPath, h.EnqueueTask)
 	r.Get(releaseinfo.GetAllQueuedMailTasksApiPath, h.GetAllQueuedTasks)
 	r.Get(releaseinfo.GetAllFailedQueuedMailApiPath, h.GetAllFailedQueuedTasks)

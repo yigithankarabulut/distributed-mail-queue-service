@@ -3,14 +3,13 @@ package userhandler
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/req"
-	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/middleware"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/releaseinfo"
 )
 
 func (h *userHandler) AddRoutes(r fiber.Router) {
 	r.Post(releaseinfo.RegisterUserApiPath, h.Register)
 	r.Post(releaseinfo.LoginUserApiPath, h.Login)
-	r.Use(middleware.AuthMiddleware())
+	r.Use(h.Middleware.AuthMiddleware())
 	r.Get(releaseinfo.GetUserApiPath, h.GetUser)
 }
 

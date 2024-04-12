@@ -9,7 +9,7 @@ import (
 )
 
 type IWorker interface {
-	TriggerWorker()
+	TriggerWorker() error
 	HandleTask(ctx context.Context, task model.MailTaskQueue) error
 }
 
@@ -19,6 +19,7 @@ type worker struct {
 	taskStorage taskstorage.TaskStorer
 	taskqueue   taskqueue.TaskQueue
 	taskChannel chan model.MailTaskQueue
+	done        chan struct{}
 }
 
 type Option func(*worker)
@@ -44,6 +45,18 @@ func WithTaskQueue(rds taskqueue.TaskQueue) Option {
 func WithChannel(ch chan model.MailTaskQueue) Option {
 	return func(w *worker) {
 		w.taskChannel = ch
+	}
+}
+
+func WithMailService(ms mailservice.MailService) Option {
+	return func(w *worker) {
+		w.mailService = ms
+	}
+}
+
+func WithDoneChannel(ch chan struct{}) Option {
+	return func(w *worker) {
+		w.done = ch
 	}
 }
 

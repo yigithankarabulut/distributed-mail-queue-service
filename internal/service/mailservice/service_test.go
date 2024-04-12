@@ -45,7 +45,7 @@ func Test_mailService_AddTask(t *testing.T) {
 			},
 		}
 		err := mockService.AddTask(task)
-		want := "Missing fields: UserID, RecipientEmail, Subject, Body"
+		want := "Missing fields: RecipientEmail, Subject, Body"
 		t.Run(tc, func(t *testing.T) {
 			if err.Error() != want {
 				t.Errorf("Expected error to be %s but got %v", want, err)

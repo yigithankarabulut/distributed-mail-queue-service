@@ -2,16 +2,18 @@ package pkg
 
 import (
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/jwtutils"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/middleware"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/passutils"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/response"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/validator"
 )
 
 type Packages struct {
-	JwtUtils  jwtutils.IJwtUtils
-	PassUtils passutils.IPassUtils
-	Validator validator.IValidate
-	Response  response.IResponse
+	JwtUtils   jwtutils.IJwtUtils
+	PassUtils  passutils.IPassUtils
+	Validator  validator.IValidate
+	Response   response.IResponse
+	Middleware middleware.IMiddleware
 }
 
 type Option func(*Packages)
@@ -37,6 +39,12 @@ func WithValidator(validator validator.IValidate) Option {
 func WithResponse(response response.IResponse) Option {
 	return func(p *Packages) {
 		p.Response = response
+	}
+}
+
+func WithMiddleware(middleware middleware.IMiddleware) Option {
+	return func(p *Packages) {
+		p.Middleware = middleware
 	}
 }
 

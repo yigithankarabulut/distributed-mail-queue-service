@@ -1,265 +1,215 @@
-package taskqueue
+package taskqueue_test
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"github.com/go-redis/redismock/v9"
-	"github.com/redis/go-redis/v9"
+	"github.com/gofiber/fiber/v2/log"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/storage/taskqueue"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/model"
+	"strings"
+	"sync"
 	"testing"
 )
 
 func Test_taskQueue_PublishTask(t *testing.T) {
 	rdb, mockClient := redismock.NewClientMock()
-	type fields struct {
-		consumerCount int
-		queueName     string
-		rdb           *redis.Client
-		taskChannel   chan model.MailTaskQueue
-	}
-	type args struct {
-		task interface{}
-	}
-
-	task1 := model.MailTaskQueue{
-		UserID: 1,
-	}
-	task2 := model.MailTaskQueue{
-		UserID:         2,
-		Body:           "test",
-		RecipientEmail: "test@test.com",
-		Subject:        "test",
-	}
-	task3 := "invalid task model"
-	expectTask1, _ := json.Marshal(task1)
-	expectTask2, _ := json.Marshal(task2)
-
-	TestCase := []struct {
-		name    string
-		fields  fields
-		args    args
-		expect  []byte
-		wantErr bool
-	}{
-		{
-			name: "Test Case 1 - Valid Task Model",
-			fields: fields{
-				consumerCount: 1,
-				queueName:     "testQueue",
-				rdb:           rdb,
-				taskChannel:   make(chan model.MailTaskQueue),
-			},
-			args: args{
-				task: task1,
-			},
-			expect:  expectTask1,
-			wantErr: false,
-		},
-		{
-			name: "Test Case 2 - Valid Task Model",
-			fields: fields{
-				consumerCount: 1,
-				queueName:     "testQueue",
-				rdb:           rdb,
-				taskChannel:   make(chan model.MailTaskQueue),
-			},
-			args: args{
-				task: task2,
-			},
-			expect:  expectTask2,
-			wantErr: false,
-		},
-		{
-			name: "Test Case 3 - Invalid Task Model - JSON Marshalling Error",
-			fields: fields{
-				consumerCount: 1,
-				queueName:     "testQueue",
-				rdb:           rdb,
-				taskChannel:   make(chan model.MailTaskQueue),
-			},
-			args: args{
-				task: task3,
-			},
-			expect:  nil,
-			wantErr: true,
-		},
-		{
-			name: "Test Case 4 - Redis Error",
-			fields: fields{
-				consumerCount: 1,
-				queueName:     "testQueue",
-				rdb:           rdb,
-				taskChannel:   make(chan model.MailTaskQueue),
-			},
-			args: args{
-				task: task1,
-			},
-			expect:  expectTask1,
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range TestCase {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &taskQueue{
-				consumerCount: tt.fields.consumerCount,
-				queueName:     tt.fields.queueName,
-				rdb:           tt.fields.rdb,
-				taskChannel:   tt.fields.taskChannel,
-			}
-			if tt.wantErr {
-				mockClient.ExpectLPush(tt.fields.queueName, tt.expect).SetErr(errors.New("error"))
-			} else {
-				mockClient.ExpectLPush(tt.fields.queueName, tt.expect).SetVal(1)
-			}
-			if err := r.PublishTask(tt.args.task); (err != nil) != tt.wantErr {
-				t.Errorf("PublishTask() error = %v, wantErr %v", err, tt.wantErr)
+	taskQueue := taskqueue.New(
+		taskqueue.WithConsumerCount(1),
+		taskqueue.WithQueueName("testQueue"),
+		taskqueue.WithRedisClient(rdb),
+		taskqueue.WithTaskChannel(make(chan model.MailTaskQueue)),
+	)
+	{
+		tc := "Case 1: Context Cancelled And Return Error"
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		err := taskQueue.PublishTask(ctx, model.MailTaskQueue{})
+		t.Run(tc, func(t *testing.T) {
+			if !errors.Is(err, context.Canceled) {
+				t.Errorf("Expected error to be context.Canceled, got %v", err)
 			}
 		})
-
 	}
+	{
+		tc := "Case 2: Invalid Task Model And JSON Marshal Error"
+		ctx := context.Background()
+		err := taskQueue.PublishTask(ctx, "invalid task model")
+		t.Run(tc, func(t *testing.T) {
+			if err == nil {
+				t.Errorf("Expected error, got nil")
+			}
+		})
+	}
+	{
+		tc := "Case 3: Redis LPUSH Error And Return Error"
+		ctx := context.Background()
+		mockClient.ExpectLPush("testQueue", "test").SetErr(errors.New("error"))
+		err := taskQueue.PublishTask(ctx, "test")
+		t.Run(tc, func(t *testing.T) {
+			if err == nil {
+				t.Errorf("Expected error, got nil")
+			}
+		})
+		mockClient.ClearExpect()
+	}
+	{
+		tc := "Case 4: Valid Task Model, Print Log And Return Nil"
+		ctx := context.Background()
+		var buf bytes.Buffer
+		log.SetOutput(&buf)
 
+		expectedTask := model.MailTaskQueue{UserID: 1}
+		expectedJson, _ := json.Marshal(expectedTask)
+		mockClient.ExpectLPush("testQueue", expectedJson).SetVal(1)
+
+		err := taskQueue.PublishTask(ctx, expectedTask)
+		want := "publishing task to channel: testQueue"
+		logContents := buf.String()
+		t.Run(tc, func(t *testing.T) {
+			if err != nil {
+				t.Errorf("Expected nil, got %v", err)
+			}
+			if !strings.Contains(logContents, want) {
+				t.Errorf("Expected log \"%s\" not found in log contents:\n%s", want, logContents)
+			}
+		})
+		mockClient.ClearExpect()
+	}
 }
 
 func Test_taskQueue_SubscribeTask(t *testing.T) {
 	rdb, mockClient := redismock.NewClientMock()
-	type fields struct {
-		consumerCount int
-		queueName     string
-		rdb           *redis.Client
-		taskChannel   chan model.MailTaskQueue
-	}
-	type args struct {
-		consumerID int
-	}
-	tests := []struct {
-		name        string
-		fields      fields
-		args        args
-		routineFunc func(args ...interface{})
-		wantErr     bool
-	}{
-		{
-			name: "Test Case 1 - Valid Consumer ID",
-			fields: fields{
-				consumerCount: 1,
-				queueName:     "testQueue",
-				rdb:           rdb,
-				taskChannel:   make(chan model.MailTaskQueue),
-			},
-			args: args{
-				consumerID: 1,
-			},
-			routineFunc: func(args ...interface{}) {
-				args[0].(func())()
-			},
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &taskQueue{
-				consumerCount: tt.fields.consumerCount,
-				queueName:     tt.fields.queueName,
-				rdb:           tt.fields.rdb,
-				taskChannel:   tt.fields.taskChannel,
+	taskCh := make(chan model.MailTaskQueue)
+	taskQueue := taskqueue.New(
+		taskqueue.WithConsumerCount(1),
+		taskqueue.WithQueueName("testQueue"),
+		taskqueue.WithRedisClient(rdb),
+		taskqueue.WithTaskChannel(taskCh),
+	)
+	{
+		tc := "Case 1: Context Cancelled And Return Error"
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		err := taskQueue.SubscribeTask(ctx, 1)
+		t.Run(tc, func(t *testing.T) {
+			if !errors.Is(err, context.Canceled) {
+				t.Errorf("Expected error to be context.Canceled, got %v", err)
 			}
-			go func() {
-				ctx, cancel := context.WithCancel(context.Background())
-				defer cancel()
-				if err := r.SubscribeTask(ctx, tt.args.consumerID); (err != nil) != tt.wantErr {
-					t.Errorf("SubscribeTask() error = %v, wantErr %v", err, tt.wantErr)
-				}
-			}()
-			tt.routineFunc(func() {
-				mockClient.ExpectLPop(tt.fields.queueName).SetErr(errors.New("error"))
-			})
 		})
+	}
+	{
+		tc := "Case 2: Redis BRPOP Error And Return Error"
+		ctx := context.Background()
+		mockClient.ExpectBRPop(0, "testQueue").SetErr(errors.New("error"))
+		err := taskQueue.SubscribeTask(ctx, 1)
+		t.Run(tc, func(t *testing.T) {
+			if err == nil {
+				t.Errorf("Expected error, got nil")
+			}
+		})
+		mockClient.ClearExpect()
+	}
+	{
+		tc := "Case 3: Redis BRPOP Return Redis.Nil Error And Continue But JSON Unmarshal Error And Print Log"
+		ctx := context.Background()
+		mockClient.ExpectBRPop(0, "testQueue").SetVal([]string{"test", "invalid json"})
+		var buf bytes.Buffer
+		log.SetOutput(&buf)
+
+		err := taskQueue.SubscribeTask(ctx, 1)
+		want := "consumer 1 error unmarshalling task"
+		logContents := buf.String()
+		t.Run(tc, func(t *testing.T) {
+			if err == nil {
+				t.Errorf("Expected nil, got %v", err)
+			}
+			if !strings.Contains(logContents, want) {
+				t.Errorf("Expected log \"%s\" not found in log contents:\n%s", want, logContents)
+			}
+		})
+		mockClient.ClearExpect()
+	}
+	{
+		tc := "Case 4: Valid Task Model Send Task To Channel"
+		ctx := context.Background()
+
+		expectedTask := model.MailTaskQueue{UserID: 1}
+		expectedJson, _ := json.Marshal(expectedTask)
+		mockClient.ExpectBRPop(0, "testQueue").SetVal([]string{"testQueue", string(expectedJson)})
+
+		wg := sync.WaitGroup{}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := taskQueue.SubscribeTask(ctx, 1); err != nil {
+				log.Errorf("error: %v", err)
+			}
+		}()
+
+		t.Run(tc, func(t *testing.T) {
+			if task := <-taskCh; task.UserID != expectedTask.UserID {
+				t.Errorf("Expected task: %v, got %v", expectedTask, task)
+			}
+		})
+		wg.Wait()
 	}
 }
 
 func Test_taskQueue_StartConsume(t *testing.T) {
 	rdb, mockClient := redismock.NewClientMock()
-	type fields struct {
-		consumerCount int
-		queueName     string
-		rdb           *redis.Client
-		taskChannel   chan model.MailTaskQueue
-	}
-	type args struct {
-		consumerID int
-	}
-	tests := []struct {
-		name    string
-		fields  fields
-		args    args
-		expect  []byte
-		ctx     int // 0: context.Background(), 1: context.WithCancel(context.Background())
-		wantErr bool
-	}{
-		{
-			name: "Test Case 1 - Valid Consumer Count and Queue Name",
-			fields: fields{
-				consumerCount: 1,
-				queueName:     "testQueue",
-				rdb:           rdb,
-				taskChannel:   make(chan model.MailTaskQueue),
-			},
-			args: args{
-				consumerID: 1,
-			},
-			ctx:     1,
-			expect:  []byte(`{"id":1,"user_id":0,"subject":"","body":"","recipient_email":""}`),
-			wantErr: false,
-		},
-		{
-			name: "Test Case 2 - Redis Error",
-			fields: fields{
-				consumerCount: 1,
-				queueName:     "testQueue",
-				rdb:           rdb,
-				taskChannel:   make(chan model.MailTaskQueue),
-			},
-			args: args{
-				consumerID: 1,
-			},
-			ctx:     1,
-			expect:  []byte(`{"id":1,"user_id":0,"subject":"","body":"","recipient_email":""}`),
-			wantErr: true,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := &taskQueue{
-				consumerCount: tt.fields.consumerCount,
-				queueName:     tt.fields.queueName,
-				rdb:           tt.fields.rdb,
-				taskChannel:   tt.fields.taskChannel,
-			}
-			if tt.wantErr {
-				mockClient.ExpectBRPop(0, tt.fields.queueName).SetErr(errors.New("error"))
-			} else {
-				mockClient.ExpectBRPop(0, tt.fields.queueName).SetVal([]string{"test", string(tt.expect)})
-			}
-			var ctx context.Context
-			var cancel context.CancelFunc
-			if tt.ctx == 0 {
-				ctx = context.Background()
-			} else {
-				ctx, cancel = context.WithCancel(context.Background())
-				cancel()
-			}
-			errCh := r.StartConsume(ctx)
-			if err := <-errCh; err != nil {
-				if tt.ctx == 1 && err.Error() == "context canceled" {
-					return
-				} else if (err != nil) != tt.wantErr {
-					t.Errorf("StartConsume() error = %v, wantErr %v", err, tt.wantErr)
-				}
+	taskCh := make(chan model.MailTaskQueue)
+	taskQueue := taskqueue.New(
+		taskqueue.WithConsumerCount(1),
+		taskqueue.WithQueueName("testQueue"),
+		taskqueue.WithRedisClient(rdb),
+		taskqueue.WithTaskChannel(taskCh),
+	)
+	{
+		tc := "Case 1: Context Cancelled And Return Error"
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		errCh := taskQueue.StartConsume(ctx)
+		t.Run(tc, func(t *testing.T) {
+			if err := <-errCh; !errors.Is(err, context.Canceled) {
+				t.Errorf("Expected error to be context.Canceled, got %v", err)
 			}
 		})
+	}
+	{
+		tc := "Case 2: Redis BRPOP Error And Return Error"
+		ctx := context.Background()
+		mockClient.ExpectBRPop(0, "testQueue").SetErr(errors.New("error"))
+		errCh := taskQueue.StartConsume(ctx)
+		t.Run(tc, func(t *testing.T) {
+			if err := <-errCh; err == nil || !strings.Contains(err.Error(), "error") {
+				t.Errorf("Expected error, got nil")
+			}
+		})
+	}
+	{
+		tc := "Case 3: Valid Task Model Send Task To Channel"
+		ctx := context.Background()
+
+		expectedTask := model.MailTaskQueue{UserID: 1}
+		expectedJson, _ := json.Marshal(expectedTask)
+		mockClient.ExpectBRPop(0, "testQueue").SetVal([]string{"testQueue", string(expectedJson)})
+		wg := sync.WaitGroup{}
+		t.Run(tc, func(t *testing.T) {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				errCh := taskQueue.StartConsume(ctx)
+				if err := <-errCh; err != nil {
+					log.Errorf("error: %v", err)
+				}
+			}()
+			if task := <-taskCh; task.UserID != expectedTask.UserID {
+				t.Errorf("Expected task: %v, got %v", expectedTask, task)
+			}
+		})
+		wg.Wait()
 	}
 }

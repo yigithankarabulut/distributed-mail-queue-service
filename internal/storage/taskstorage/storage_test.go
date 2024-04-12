@@ -26,9 +26,11 @@ func Test_taskStorage_Insert(t *testing.T) {
 		mock.ExpectClose()
 		storage := taskstorage.New(taskstorage.WithTaskDB(db))
 		_, err := storage.Insert(context.Background(), model.MailTaskQueue{})
-		if err != nil {
-			t.Errorf("TaskStorage.Insert() %s error = %v, want nil", tc, err)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err != nil {
+				t.Errorf("%s: Expected err to be nil but got %v", tc, err)
+			}
+		})
 	}
 	{
 		tc := "Case 2: Invalid Case And Error"
@@ -39,9 +41,11 @@ func Test_taskStorage_Insert(t *testing.T) {
 		mock.ExpectClose()
 		storage := taskstorage.New(taskstorage.WithTaskDB(db))
 		_, err := storage.Insert(context.Background(), model.MailTaskQueue{})
-		if err == nil {
-			t.Errorf("TaskStorage.Insert() %s error = nil, want error", tc)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err == nil {
+				t.Errorf("%s: Expected err to be not nil but got nil", tc)
+			}
+		})
 	}
 }
 
@@ -59,9 +63,11 @@ func Test_taskStorage_GetByID(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 		storage := taskstorage.New(taskstorage.WithTaskDB(db))
 		_, err := storage.GetByID(context.Background(), 1)
-		if err != nil {
-			t.Errorf("TaskStorage.GetByID() %s error = %v, want nil", tc, err)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err != nil {
+				t.Errorf("%s: Expected err to be nil but got %v", tc, err)
+			}
+		})
 	}
 	{
 		tc := "Case 2: Invalid Case And Error"
@@ -70,9 +76,11 @@ func Test_taskStorage_GetByID(t *testing.T) {
 			WillReturnError(gorm.ErrInvalidData)
 		storage := taskstorage.New(taskstorage.WithTaskDB(db))
 		_, err := storage.GetByID(context.Background(), 1)
-		if err == nil {
-			t.Errorf("TaskStorage.GetByID() %s error = nil, want error", tc)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err == nil {
+				t.Errorf("%s: Expected err to be not nil but got nil", tc)
+			}
+		})
 	}
 	{
 		tc := "Case 3: Invalid Case And Not Found"
@@ -81,9 +89,11 @@ func Test_taskStorage_GetByID(t *testing.T) {
 			WillReturnError(gorm.ErrRecordNotFound)
 		storage := taskstorage.New(taskstorage.WithTaskDB(db))
 		_, err := storage.GetByID(context.Background(), 1)
-		if err == nil {
-			t.Errorf("TaskStorage.GetByID() %s error = nil, want error", tc)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err == nil {
+				t.Errorf("%s: Expected err to be not nil but got nil", tc)
+			}
+		})
 	}
 }
 
@@ -101,9 +111,11 @@ func Test_taskStorage_GetAll(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 		storage := taskstorage.New(taskstorage.WithTaskDB(db))
 		_, err := storage.GetAll(context.Background(), 1)
-		if err != nil {
-			t.Errorf("TaskStorage.GetAll() %s error = %v, want nil", tc, err)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err != nil {
+				t.Errorf("%s: Expected err to be nil but got %v", tc, err)
+			}
+		})
 	}
 	{
 		tc := "Case 2: Invalid Case And Error"
@@ -112,9 +124,11 @@ func Test_taskStorage_GetAll(t *testing.T) {
 			WillReturnError(gorm.ErrInvalidData)
 		storage := taskstorage.New(taskstorage.WithTaskDB(db))
 		_, err := storage.GetAll(context.Background(), 1)
-		if err == nil {
-			t.Errorf("TaskStorage.GetAll() %s error = nil, want error", tc)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err == nil {
+				t.Errorf("%s: Expected err to be not nil but got nil", tc)
+			}
+		})
 	}
 }
 
@@ -132,9 +146,11 @@ func Test_taskStorage_GetAllByUnprocessedTasks(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 		storage := taskstorage.New(taskstorage.WithTaskDB(db))
 		_, err := storage.GetAllByUnprocessedTasks(context.Background())
-		if err != nil {
-			t.Errorf("TaskStorage.GetAllByUnprocessedTasks() %s error = %v, want nil", tc, err)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err != nil {
+				t.Errorf("%s: Expected err to be nil but got %v", tc, err)
+			}
+		})
 	}
 	{
 		tc := "Case 2: Wrong Status Value And Error"
@@ -143,9 +159,11 @@ func Test_taskStorage_GetAllByUnprocessedTasks(t *testing.T) {
 			WillReturnError(gorm.ErrInvalidData)
 		storage := taskstorage.New(taskstorage.WithTaskDB(db))
 		_, err := storage.GetAllByUnprocessedTasks(context.Background())
-		if err == nil {
-			t.Errorf("TaskStorage.GetAllByUnprocessedTasks() %s error = nil, want error", tc)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err == nil {
+				t.Errorf("%s: Expected err to be not nil but got nil", tc)
+			}
+		})
 	}
 }
 
@@ -163,9 +181,11 @@ func Test_taskStorage_GetAllByStatusWithUserID(t *testing.T) {
 			WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
 		storage := taskstorage.New(taskstorage.WithTaskDB(db))
 		_, err := storage.GetAllByStatusWithUserID(context.Background(), 0, 1)
-		if err != nil {
-			t.Errorf("TaskStorage.GetAllByStatusWithUserID() %s error = %v, want nil", tc, err)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err != nil {
+				t.Errorf("%s: Expected err to be nil but got %v", tc, err)
+			}
+		})
 	}
 	{
 		tc := "Case 2: Invalid Case And Error"
@@ -174,9 +194,11 @@ func Test_taskStorage_GetAllByStatusWithUserID(t *testing.T) {
 			WillReturnError(gorm.ErrInvalidData)
 		storage := taskstorage.New(taskstorage.WithTaskDB(db))
 		_, err := storage.GetAllByStatusWithUserID(context.Background(), 1, 1)
-		if err == nil {
-			t.Errorf("TaskStorage.GetAllByStatusWithUserID() %s error = nil, want error", tc)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err == nil {
+				t.Errorf("%s: Expected err to be not nil but got nil", tc)
+			}
+		})
 	}
 }
 
@@ -200,9 +222,11 @@ func Test_taskStorage_Update(t *testing.T) {
 			UserID:   1,
 			TryCount: 1,
 		})
-		if err != nil {
-			t.Errorf("TaskStorage.Update() %s error = %v, want nil", tc, err)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err != nil {
+				t.Errorf("%s: Expected err to be nil but got %v", tc, err)
+			}
+		})
 	}
 	{
 		tc := "Case 2: Invalid Case And Error"
@@ -217,9 +241,11 @@ func Test_taskStorage_Update(t *testing.T) {
 			UserID:   1,
 			TryCount: 1,
 		})
-		if err == nil {
-			t.Errorf("TaskStorage.Update() %s error = nil, want error", tc)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err == nil {
+				t.Errorf("%s: Expected err to be not nil but got nil", tc)
+			}
+		})
 	}
 }
 
@@ -240,9 +266,11 @@ func Test_taskStorage_Delete(t *testing.T) {
 		mock.ExpectClose()
 		storage := taskstorage.New(taskstorage.WithTaskDB(db))
 		err := storage.Delete(context.Background(), 1)
-		if err != nil {
-			t.Errorf("TaskStorage.Delete() %s error = %v, want nil", tc, err)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err != nil {
+				t.Errorf("%s: Expected err to be nil but got %v", tc, err)
+			}
+		})
 	}
 	{
 		tc := "Case 2: Invalid Case And Error"
@@ -254,8 +282,10 @@ func Test_taskStorage_Delete(t *testing.T) {
 		mock.ExpectClose()
 		storage := taskstorage.New(taskstorage.WithTaskDB(db))
 		err := storage.Delete(context.Background(), 1)
-		if err == nil {
-			t.Errorf("TaskStorage.Delete() %s error = nil, want error", tc)
-		}
+		t.Run(tc, func(t *testing.T) {
+			if err == nil {
+				t.Errorf("%s: Expected err to be not nil but got nil", tc)
+			}
+		})
 	}
 }
