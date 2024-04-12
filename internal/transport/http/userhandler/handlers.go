@@ -9,9 +9,8 @@ import (
 func (h *userHandler) AddRoutes(r fiber.Router) {
 	r.Post(releaseinfo.RegisterUserApiPath, h.Register)
 	r.Post(releaseinfo.LoginUserApiPath, h.Login)
-	r.Use(h.Packages.JwtUtils.AuthMiddleware())
+	r.Use(h.Middleware.AuthMiddleware())
 	r.Get(releaseinfo.GetUserApiPath, h.GetUser)
-	r.Put(releaseinfo.UpdateUserApiPath, h.UpdateUser)
 }
 
 func (h *userHandler) Register(c *fiber.Ctx) error {
@@ -50,20 +49,6 @@ func (h *userHandler) GetUser(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(h.Response.BasicError(err, fiber.StatusBadRequest))
 	}
 	user, err := h.userService.GetUser(c.Context(), req)
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(h.Response.BasicError(err, fiber.StatusInternalServerError))
-	}
-	return c.Status(fiber.StatusOK).JSON(h.Response.Data(fiber.StatusOK, user))
-}
-
-func (h *userHandler) UpdateUser(c *fiber.Ctx) error {
-	var (
-		req dtoreq.UpdateUserRequest
-	)
-	if err := h.Validator.BindAndValidate(c, &req); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(h.Response.BasicError(err, fiber.StatusBadRequest))
-	}
-	user, err := h.userService.UpdateUser(c.Context(), req)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(h.Response.BasicError(err, fiber.StatusInternalServerError))
 	}

@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-api
+spec:
+  selector:
+    matchLabels:
+      app: dmqs-app
+  template:
+    metadata:
+      labels:
+        app: dmqs-app
+    spec:
+      containers:
+        - name: dmqs-app
+          image: yigithankarabulut/dmqsapp:latest
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "125m"
+            limits:
+              memory: "128Mi"
+              cpu: "250m"
+          env:
+            - name: DB_HOST
+              value: postgres-service
+            - name: DB_PORT
+              value: "5432"
+            - name: REDIS_HOST
+              value: redis-service
+            - name: REDIS_PORT
+              value: "6379"
+            - name: DB_USER
+              value: ykarabul
+            - name: DB_PASS
+              value: yigitsh
+            - name: DB_NAME
+              value: DMQS
+            - name: JWT_SECRET
+              value: secret

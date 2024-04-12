@@ -3,6 +3,7 @@ package taskstorage
 import (
 	"context"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/model"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/constant"
 	"gorm.io/gorm"
 )
 
@@ -33,9 +34,17 @@ func (s *taskStorage) GetAll(ctx context.Context, userID uint) ([]model.MailTask
 	return tasks, nil
 }
 
-func (s *taskStorage) GetAllByStatus(ctx context.Context, state int, userID uint) ([]model.MailTaskQueue, error) {
+func (s *taskStorage) GetAllByUnprocessedTasks(ctx context.Context) ([]model.MailTaskQueue, error) {
 	var tasks []model.MailTaskQueue
-	if err := s.db.Where("state = ? AND user_id = ?", state, userID).Find(&tasks).Error; err != nil {
+	if err := s.db.Where("status = ? AND updated_at < NOW() - INTERVAL '5 minutes'", constant.StatusQueued).Find(&tasks).Error; err != nil {
+		return tasks, err
+	}
+	return tasks, nil
+}
+
+func (s *taskStorage) GetAllByStatusWithUserID(ctx context.Context, state int, userID uint) ([]model.MailTaskQueue, error) {
+	var tasks []model.MailTaskQueue
+	if err := s.db.Where("status = ? AND user_id = ?", state, userID).Find(&tasks).Error; err != nil {
 		return tasks, err
 	}
 	return tasks, nil
@@ -57,23 +66,4 @@ func (s *taskStorage) Delete(ctx context.Context, id uint) error {
 		return err
 	}
 	return nil
-}
-
-func (s *taskStorage) CreateTx() *gorm.DB {
-	return s.db.Begin()
-}
-
-func (s *taskStorage) CommitTx(tx *gorm.DB) {
-	tx.Commit()
-}
-
-func (s *taskStorage) RollbackTx(tx *gorm.DB) {
-	tx.Rollback()
-}
-
-func (s *taskStorage) SetTx(tx ...*gorm.DB) *gorm.DB {
-	if len(tx) > 0 {
-		s.db = tx[0]
-	}
-	return s.db
 }

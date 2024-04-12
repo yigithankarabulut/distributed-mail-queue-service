@@ -2,6 +2,7 @@ package redisclient
 
 import (
 	"context"
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/redis/go-redis/v9"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/config"
 	"time"
@@ -26,5 +27,6 @@ func New(config config.Redis) (*redis.Client, error) {
 		return nil, err
 	}
 	Rdb = client
+	log.Infof("connected to redis: %s:%s", config.Host, config.Port)
 	return client, nil
 }

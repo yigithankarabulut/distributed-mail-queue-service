@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/req"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/res"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/service/mailservice"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/storage/taskstorage"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/storage/userstorage"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg"
@@ -13,13 +14,13 @@ type UserService interface {
 	Register(ctx context.Context, req dtoreq.RegisterRequest) error
 	Login(ctx context.Context, req dtoreq.LoginRequest) (dtores.LoginResponse, error)
 	GetUser(ctx context.Context, req dtoreq.GetUserRequest) (dtores.GetUserResponse, error)
-	UpdateUser(ctx context.Context, req dtoreq.UpdateUserRequest) (dtores.UpdateUserResponse, error)
 }
 
 type userService struct {
 	*pkg.Packages
 	userStorage userstorage.UserStorer
 	taskStorage taskstorage.TaskStorer
+	mailService mailservice.MailService
 }
 
 type Option func(*userService)
@@ -39,6 +40,12 @@ func WithTaskStorage(taskStorage taskstorage.TaskStorer) Option {
 func WithPackages(packages *pkg.Packages) Option {
 	return func(u *userService) {
 		u.Packages = packages
+	}
+}
+
+func WithMailService(mailService mailservice.MailService) Option {
+	return func(u *userService) {
+		u.mailService = mailService
 	}
 }
 

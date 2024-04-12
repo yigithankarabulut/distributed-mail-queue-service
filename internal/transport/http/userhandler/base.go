@@ -7,9 +7,12 @@ import (
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/transport/http/basehttphandler"
 )
 
-// Endpoints is the interface for http endpoints.
-type Endpoints interface {
+// UserHandler is the interface for user handler.
+type UserHandler interface {
 	AddRoutes(router fiber.Router)
+	Register(c *fiber.Ctx) error
+	Login(c *fiber.Ctx) error
+	GetUser(c *fiber.Ctx) error
 }
 
 // userHandler is the handler for http requests.
@@ -44,7 +47,7 @@ func WithTaskService(service taskservice.TaskService) Option {
 }
 
 // New creates a new http handler with the given options.
-func New(opts ...Option) Endpoints {
+func New(opts ...Option) UserHandler {
 	h := &userHandler{}
 	for _, opt := range opts {
 		opt(h)

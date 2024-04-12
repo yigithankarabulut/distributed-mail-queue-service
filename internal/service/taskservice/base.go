@@ -13,6 +13,7 @@ type TaskService interface {
 	EnqueueMailTask(ctx context.Context, request dtoreq.TaskEnqueueRequest) (dtores.TaskEnqueueResponse, error)
 	GetAllQueuedTasks(ctx context.Context, request dtoreq.GetAllQueuedTasksRequest) (dtores.GetAllQueuedTasksResponse, error)
 	GetAllFailedQueuedTasks(ctx context.Context, request dtoreq.GetAllFailedTasksRequest) (dtores.GetAllFailedTasksResponse, error)
+	FindUnprocessedTasksAndEnqueue()
 }
 
 type taskService struct {

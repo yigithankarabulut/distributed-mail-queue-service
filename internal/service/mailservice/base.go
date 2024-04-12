@@ -5,10 +5,15 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
+type Dialer interface {
+	Dial() (gomail.SendCloser, error)
+}
+
 type MailService interface {
+	AddTask(task model.MailTaskQueue) error
 	NewDialer() *gomail.Dialer
 	NewMessage() *gomail.Message
-	SendMail(d *gomail.Dialer, m *gomail.Message) error
+	SendMail(d Dialer, m *gomail.Message) error
 }
 
 type mailService struct {

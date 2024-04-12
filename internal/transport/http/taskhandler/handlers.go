@@ -7,7 +7,7 @@ import (
 )
 
 func (h *taskHandler) AddRoutes(r fiber.Router) {
-	r.Use(h.Packages.JwtUtils.AuthMiddleware())
+	r.Use(h.Middleware.AuthMiddleware())
 	r.Post(releaseinfo.EnqueueMailApiPath, h.EnqueueTask)
 	r.Get(releaseinfo.GetAllQueuedMailTasksApiPath, h.GetAllQueuedTasks)
 	r.Get(releaseinfo.GetAllFailedQueuedMailApiPath, h.GetAllFailedQueuedTasks)

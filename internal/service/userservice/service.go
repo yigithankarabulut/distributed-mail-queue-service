@@ -9,8 +9,6 @@ import (
 	"time"
 )
 
-// TODO: add custom error types
-
 func (s *userService) Register(ctx context.Context, req dtoreq.RegisterRequest) error {
 	var (
 		user model.User
@@ -24,26 +22,11 @@ func (s *userService) Register(ctx context.Context, req dtoreq.RegisterRequest) 
 		if _, err := s.userStorage.GetByEmail(ctx, req.Email); err == nil {
 			return fmt.Errorf("email already exists")
 		}
-		hashPwd, err := s.PassUtils.HashPassword(req.Password)
+		hashPwd, err := s.Packages.PassUtils.HashPassword(req.Password)
 		if err != nil {
 			return fmt.Errorf("error hashing password: %w", err)
 		}
 		req.Password = hashPwd
-		user = req.ConvertToUser()
-		//testMail := model.GoMail{
-		//	From:         user.Email,
-		//	To:           constant.Test_To,
-		//	Body:         constant.Test_Body,
-		//	Subject:      constant.Test_Subject,
-		//	SmtpHost:     user.SmtpHost,
-		//	SmtpPort:     user.SmtpPort,
-		//	SmtpUsername: user.SmtpUsername,
-		//	SmtpPassword: user.SmtpPassword,
-		//}
-
-		//if err = testMail.Send(testMail.NewDialer(), testMail.NewMessage()); err != nil {
-		//	return fmt.Errorf("error sending test mail: %w", err)
-		//}
 		if err = s.userStorage.Insert(ctx, user); err != nil {
 			return fmt.Errorf("error inserting user: %w", err)
 		}
@@ -93,8 +76,4 @@ func (s *userService) GetUser(ctx context.Context, req dtoreq.GetUserRequest) (d
 		res.FromUser(user)
 		return res, nil
 	}
-}
-
-func (s *userService) UpdateUser(ctx context.Context, req dtoreq.UpdateUserRequest) (dtores.UpdateUserResponse, error) {
-	return dtores.UpdateUserResponse{}, nil
 }

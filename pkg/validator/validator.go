@@ -8,7 +8,6 @@ import (
 )
 
 type IValidate interface {
-	RegisterValidation(data interface{}) error
 	BindAndValidate(c *fiber.Ctx, data interface{}) error
 }
 
@@ -60,47 +59,3 @@ func (v *Validator) BindAndValidate(c *fiber.Ctx, data interface{}) error {
 	}
 	return nil
 }
-
-//type Validator struct {
-//	Validator *validator.Validate
-//}
-//
-//func New() *Validator {
-//	return &Validator{
-//		Validator: validator.New(),
-//	}
-//}
-//
-//func (v *Validator) RegisterValidation(data interface{}) error {
-//	v.Validator.RegisterTagNameFunc(func(fld reflect.StructField) string {
-//		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
-//		if name == "-" {
-//			return ""
-//		}
-//		return name
-//	})
-//	v.Validator.RegisterTagNameFunc(func(fld reflect.StructField) string {
-//		name := strings.SplitN(fld.Tag.Get("query"), ",", 2)[0]
-//		if name == "-" {
-//			return ""
-//		}
-//		return name
-//	})
-//	return v.Validator.Struct(data)
-//}
-//
-//func (v *Validator) BindAndValidate(c *fiber.Ctx, data interface{}) error {
-//	var (
-//		err  error
-//		err2 error
-//	)
-//	err = c.BodyParser(data)
-//	err2 = c.QueryParser(data)
-//	if err != nil && err2 != nil {
-//		return err
-//	}
-//	if err = v.RegisterValidation(data); err != nil {
-//		return err
-//	}
-//	return nil
-//}

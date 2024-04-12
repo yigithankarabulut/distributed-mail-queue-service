@@ -2,10 +2,11 @@ package taskservice
 
 import (
 	"context"
-	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/req"
-	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/res"
+	dtoreq "github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/req"
+	dtores "github.com/yigithankarabulut/distributed-mail-queue-service/internal/dto/res"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/model"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/constant"
+	"log"
 )
 
 func (s *taskService) EnqueueMailTask(ctx context.Context, request dtoreq.TaskEnqueueRequest) (dtores.TaskEnqueueResponse, error) {
@@ -26,7 +27,7 @@ func (s *taskService) EnqueueMailTask(ctx context.Context, request dtoreq.TaskEn
 		if err != nil {
 			return dtores.TaskEnqueueResponse{}, err
 		}
-		if err := s.redisClient.PublishTask(constant.RedisMailQueueChannel, task); err != nil {
+		if err := s.redisClient.PublishTask(ctx, task); err != nil {
 			return dtores.TaskEnqueueResponse{}, err
 		}
 		res.TaskID = task.ID
@@ -59,11 +60,32 @@ func (s *taskService) GetAllFailedQueuedTasks(ctx context.Context, request dtore
 	case <-ctx.Done():
 		return dtores.GetAllFailedTasksResponse{}, ctx.Err()
 	default:
-		tasks, err := s.taskStorage.GetAllByStatus(ctx, constant.StatusFailed, request.UserID)
+		tasks, err := s.taskStorage.GetAllByStatusWithUserID(ctx, constant.StatusCancelled, request.UserID)
 		if err != nil {
 			return dtores.GetAllFailedTasksResponse{}, err
 		}
 		res.ToMailTaskQueue(tasks)
 		return res, nil
 	}
+}
+
+func (s *taskService) FindUnprocessedTasksAndEnqueue() {
+	var (
+		tasks []model.MailTaskQueue
+		err   error
+	)
+	log.Println("Finding unprocessed tasks and enqueueing...")
+	ctx, cancel := context.WithTimeout(context.Background(), constant.TaskCancelTimeout)
+	defer cancel()
+	tasks, err = s.taskStorage.GetAllByUnprocessedTasks(ctx)
+	if err != nil {
+		log.Printf("error finding unprocessed tasks: %v", err)
+		return
+	}
+	for _, task := range tasks {
+		if err := s.redisClient.PublishTask(ctx, task); err != nil {
+			log.Printf("error publishing task: %v", err)
+		}
+	}
+	log.Printf("%d unprocessed tasks enqueued", len(tasks))
 }

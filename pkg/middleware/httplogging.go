@@ -1,4 +1,4 @@
-package apiserver
+package middleware
 
 import (
 	"github.com/gofiber/fiber/v2"
@@ -7,8 +7,8 @@ import (
 	"time"
 )
 
-// httpLoggingMiddleware that logs incoming http requests and their latencies to the logger instance
-func httpLoggingMiddleware(logger *slog.Logger, app *fiber.App) fiber.Handler {
+// HttpLoggingMiddleware that logs incoming http requests and their latencies to the logger instance
+func HttpLoggingMiddleware(logger *slog.Logger, app *fiber.App) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		start := time.Now()
 		err := c.Next()
