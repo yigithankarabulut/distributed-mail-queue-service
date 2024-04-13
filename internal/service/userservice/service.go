@@ -27,6 +27,7 @@ func (s *userService) Register(ctx context.Context, req dtoreq.RegisterRequest) 
 			return fmt.Errorf("error hashing password: %w", err)
 		}
 		req.Password = hashPwd
+		user = req.ConvertToUser()
 		if err = s.userStorage.Insert(ctx, user); err != nil {
 			return fmt.Errorf("error inserting user: %w", err)
 		}

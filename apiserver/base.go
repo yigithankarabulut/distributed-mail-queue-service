@@ -3,7 +3,18 @@ package apiserver
 import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/config"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/service/taskservice"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/service/userservice"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/service/workerservice"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/storage/taskqueue"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/storage/taskstorage"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/storage/userstorage"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/transport/http/basehttphandler"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/transport/http/taskhandler"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/transport/http/userhandler"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/model"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg"
+	"github.com/yigithankarabulut/distributed-mail-queue-service/pkg/cron"
 	"log/slog"
 )
 
@@ -15,13 +26,28 @@ type ApiServer interface {
 	Run() error
 }
 
+type Instances struct {
+	packages        *pkg.Packages
+	taskQueue       taskqueue.TaskQueue
+	userStorage     userstorage.UserStorer
+	taskStorage     taskstorage.TaskStorer
+	cronService     *cron.CronService
+	userService     userservice.UserService
+	taskService     taskservice.TaskService
+	workers         []workerservice.IWorker
+	basehttphandler *basehttphandler.BaseHttpHandler
+	userHandler     userhandler.UserHandler
+	taskHandler     taskhandler.TaskHandler
+}
+
 type apiServer struct {
-	config      *config.Config
+	serverEnv   string
 	app         *fiber.App
-	handlers    []HttpEndpoints
 	logLevel    slog.Level
 	logger      *slog.Logger
-	serverEnv   string
+	config      *config.Config
+	handlers    []HttpEndpoints
+	instances   *Instances
 	done        chan struct{}
 	taskChannel chan model.MailTaskQueue
 }

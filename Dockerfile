@@ -22,17 +22,6 @@ WORKDIR /app
 
 COPY --from=builder /app/main .
 
-ENV DB_NAME=DMQS
-ENV DB_USER=ykarabul
-ENV DB_PASS=yigitsh
-ENV DB_HOST=postgres
-ENV DB_PORT=5432
-ENV DB_MIGRATE=true
-ENV PORT=8080
-ENV JWT_SECRET=secret
-ENV REDIS_HOST=redis
-ENV REDIS_PORT=6379
-
 EXPOSE 8080
 
 CMD ["./main"]

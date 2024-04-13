@@ -33,6 +33,7 @@ apply:
 	kubectl wait --for=condition=available deployment/redis --timeout=300s
 	kubectl apply -f $(GO_API_YAML)
 	kubectl apply -f $(GO_API_SERVICE_YAML)
+	kubectl wait --for=condition=available deployment/go-api --timeout=300s
 
 hpa:
 	minikube addons enable metrics-server

@@ -12,6 +12,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 func Test_taskQueue_PublishTask(t *testing.T) {
@@ -94,16 +95,17 @@ func Test_taskQueue_SubscribeTask(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 		err := taskQueue.SubscribeTask(ctx, 1)
+		want := "consumer 1 done: context canceled"
 		t.Run(tc, func(t *testing.T) {
-			if !errors.Is(err, context.Canceled) {
-				t.Errorf("Expected error to be context.Canceled, got %v", err)
+			if err == nil || !strings.Contains(err.Error(), want) {
+				t.Errorf("Expected error, got nil")
 			}
 		})
 	}
 	{
 		tc := "Case 2: Redis BRPOP Error And Return Error"
 		ctx := context.Background()
-		mockClient.ExpectBRPop(0, "testQueue").SetErr(errors.New("error"))
+		mockClient.ExpectBRPop(time.Second, "testQueue").SetErr(errors.New("error"))
 		err := taskQueue.SubscribeTask(ctx, 1)
 		t.Run(tc, func(t *testing.T) {
 			if err == nil {
@@ -115,7 +117,7 @@ func Test_taskQueue_SubscribeTask(t *testing.T) {
 	{
 		tc := "Case 3: Redis BRPOP Return Redis.Nil Error And Continue But JSON Unmarshal Error And Print Log"
 		ctx := context.Background()
-		mockClient.ExpectBRPop(0, "testQueue").SetVal([]string{"test", "invalid json"})
+		mockClient.ExpectBRPop(time.Second, "testQueue").SetVal([]string{"test", "invalid json"})
 		var buf bytes.Buffer
 		log.SetOutput(&buf)
 
@@ -138,7 +140,7 @@ func Test_taskQueue_SubscribeTask(t *testing.T) {
 
 		expectedTask := model.MailTaskQueue{UserID: 1}
 		expectedJson, _ := json.Marshal(expectedTask)
-		mockClient.ExpectBRPop(0, "testQueue").SetVal([]string{"testQueue", string(expectedJson)})
+		mockClient.ExpectBRPop(time.Second, "testQueue").SetVal([]string{"testQueue", string(expectedJson)})
 
 		wg := sync.WaitGroup{}
 		wg.Add(1)
@@ -172,16 +174,17 @@ func Test_taskQueue_StartConsume(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
 		errCh := taskQueue.StartConsume(ctx)
+		want := "consumer 1 done: context canceled"
 		t.Run(tc, func(t *testing.T) {
-			if err := <-errCh; !errors.Is(err, context.Canceled) {
-				t.Errorf("Expected error to be context.Canceled, got %v", err)
+			if err := <-errCh; err == nil || !strings.Contains(err.Error(), want) {
+				t.Errorf("Expected error, got nil")
 			}
 		})
 	}
 	{
 		tc := "Case 2: Redis BRPOP Error And Return Error"
 		ctx := context.Background()
-		mockClient.ExpectBRPop(0, "testQueue").SetErr(errors.New("error"))
+		mockClient.ExpectBRPop(time.Second, "testQueue").SetErr(errors.New("error"))
 		errCh := taskQueue.StartConsume(ctx)
 		t.Run(tc, func(t *testing.T) {
 			if err := <-errCh; err == nil || !strings.Contains(err.Error(), "error") {
@@ -195,7 +198,7 @@ func Test_taskQueue_StartConsume(t *testing.T) {
 
 		expectedTask := model.MailTaskQueue{UserID: 1}
 		expectedJson, _ := json.Marshal(expectedTask)
-		mockClient.ExpectBRPop(0, "testQueue").SetVal([]string{"testQueue", string(expectedJson)})
+		mockClient.ExpectBRPop(time.Second, "testQueue").SetVal([]string{"testQueue", string(expectedJson)})
 		wg := sync.WaitGroup{}
 		t.Run(tc, func(t *testing.T) {
 			wg.Add(1)

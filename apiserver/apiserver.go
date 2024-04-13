@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/yigithankarabulut/distributed-mail-queue-service/internal/service/mailservice"
@@ -33,119 +34,121 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 )
 
-// appendDepends create instances from all layers and append them together. Then add it to the fiber by calling the AddRoutes method of all its handlers.
-func (s *apiServer) appendDepends() {
-	var (
-		cronService *cron.CronService
-		packages    *pkg.Packages
-		taskQueue   taskqueue.TaskQueue
-		userStorage userstorage.UserStorer
-		taskStorage taskstorage.TaskStorer
-		userService userservice.UserService
-		taskService taskservice.TaskService
-		workers     []workerservice.IWorker
+// initializeStorages initializes the storages with the given database connection.
+func (s *apiServer) initializeStorages() {
+	s.instances.userStorage = userstorage.New(userstorage.WithUserDB(postgres.DB))
+	s.instances.taskStorage = taskstorage.New(taskstorage.WithTaskDB(postgres.DB))
+	s.instances.taskQueue = taskqueue.New(
+		taskqueue.WithTaskChannel(s.taskChannel),
+		taskqueue.WithConsumerCount(constant.QueueConsumerCount),
+		taskqueue.WithQueueName(constant.RedisMailQueueChannel),
+		taskqueue.WithRedisClient(redisclient.GetRedisClient()),
 	)
+}
 
+// initializeServices initializes the services with the given storages and packages.
+func (s *apiServer) initializeServices() {
+	s.instances.cronService = cron.NewCronService()
+	s.instances.cronService.Start()
+	s.instances.userService = userservice.New(
+		userservice.WithUserStorage(s.instances.userStorage),
+		userservice.WithTaskStorage(s.instances.taskStorage),
+		userservice.WithPackages(s.instances.packages),
+		userservice.WithMailService(mailservice.New()),
+	)
+	s.instances.taskService = taskservice.New(
+		taskservice.WithTaskStorage(s.instances.taskStorage),
+		taskservice.WithUserStorage(s.instances.userStorage),
+		taskservice.WithRedisClient(s.instances.taskQueue),
+	)
+	handleUnprocessedJob := cron.CronJob{
+		Name:     "FindUnprocessedTasksAndEnqueue",
+		Schedule: "@every 5m",
+		Func:     s.instances.taskService.FindUnprocessedTasksAndEnqueue,
+	}
+	if err := s.instances.cronService.RegisterJob(handleUnprocessedJob); err != nil {
+		s.logger.Error("error registering cron job", "error", err)
+	}
+}
+
+// initializeWorkers initializes the queue consumers and workers. It also triggers the workers.
+func (s *apiServer) initializeWorkers() {
+	go func() {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		errCh := s.instances.taskQueue.StartConsume(ctx)
+		for {
+			select {
+			case <-s.done:
+				log.Info("task queue consumers done")
+				return
+			case err := <-errCh:
+				log.Errorf("task queue consumer error: %v", err)
+			}
+		}
+	}()
+	for i := 0; i < constant.WorkerCount; i++ {
+		s.instances.workers[i] = workerservice.New(
+			workerservice.WithID(i+1),
+			workerservice.WithTaskStorage(s.instances.taskStorage),
+			workerservice.WithTaskQueue(s.instances.taskQueue),
+			workerservice.WithChannel(s.taskChannel),
+			workerservice.WithDoneChannel(s.done),
+			workerservice.WithMailService(mailservice.New()),
+		)
+	}
+	for _, worker := range s.instances.workers {
+		go func(w workerservice.IWorker) {
+			if err := w.TriggerWorker(); err != nil {
+				log.Errorf("error triggering worker: %v", err)
+			}
+		}(worker)
+	}
+}
+
+// initializeHandlers initializes the handlers with the given base http handler and adds the routes to the fiber app.
+func (s *apiServer) initializeHandlers() {
+	baseHttpHandler := basehttphandler.New(
+		basehttphandler.WithContextTimeout(constant.ContextCancelTimeout),
+		basehttphandler.WithLogger(s.logger),
+		basehttphandler.WithPackages(s.instances.packages),
+	)
+	userHandler := userhandler.New(
+		userhandler.WithBaseHttpHandler(baseHttpHandler),
+		userhandler.WithUserService(s.instances.userService),
+		userhandler.WithTaskService(s.instances.taskService),
+	)
+	taskHandler := taskhandler.New(
+		taskhandler.WithBaseHttpHandler(baseHttpHandler),
+		taskhandler.WithTaskService(s.instances.taskService),
+		taskhandler.WithUserService(s.instances.userService),
+	)
+	s.handlers = append(s.handlers, userHandler, taskHandler)
+	for _, handler := range s.handlers {
+		handler.AddRoutes(s.app)
+	}
+}
+
+// createInstance creates a new instance of the server dependencies.
+func (s *apiServer) createInstance() {
+	s.instances = new(Instances)
+	s.done = make(chan struct{})
 	s.taskChannel = make(chan model.MailTaskQueue, constant.WorkerCount)
-	s.done = make(chan struct{}, 1)
-	workers = make([]workerservice.IWorker, constant.WorkerCount)
-	cronService = cron.NewCronService()
-	cronService.Start()
-
-	packages = pkg.New(
+	s.instances.workers = make([]workerservice.IWorker, constant.WorkerCount)
+	s.instances.packages = pkg.New(
 		pkg.WithValidator(validator.New()),
 		pkg.WithJwtUtils(jwtutils.New()),
 		pkg.WithPassUtils(passutils.New()),
 		pkg.WithResponse(response.New()),
 		pkg.WithMiddleware(middleware.New()),
 	)
-	userStorage = userstorage.New(userstorage.WithUserDB(postgres.DB))
-	taskStorage = taskstorage.New(taskstorage.WithTaskDB(postgres.DB))
-	taskQueue = taskqueue.New(
-		taskqueue.WithTaskChannel(s.taskChannel),
-		taskqueue.WithConsumerCount(constant.QueueConsumerCount),
-		taskqueue.WithQueueName(constant.RedisMailQueueChannel),
-		taskqueue.WithRedisClient(redisclient.GetRedisClient()),
-	)
-	userService = userservice.New(
-		userservice.WithUserStorage(userStorage),
-		userservice.WithTaskStorage(taskStorage),
-		userservice.WithPackages(packages),
-		userservice.WithMailService(mailservice.New()),
-	)
-	taskService = taskservice.New(
-		taskservice.WithTaskStorage(taskStorage),
-		taskservice.WithUserStorage(userStorage),
-		taskservice.WithRedisClient(taskQueue),
-	)
-
-	go func() {
-		errCount := 0
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
-		errCh := taskQueue.StartConsume(ctx)
-		for {
-			select {
-			case <-s.done:
-				return
-			case err := <-errCh:
-				errCount++
-				if errCount >= constant.MaxTryCount {
-					s.logger.Error("error consuming task queue", "error", err)
-					return
-				}
-			}
-		}
-	}()
-	for i := 0; i < constant.WorkerCount; i++ {
-		workers[i] = workerservice.New(
-			workerservice.WithID(i+1),
-			workerservice.WithTaskStorage(taskStorage),
-			workerservice.WithTaskQueue(taskQueue),
-			workerservice.WithChannel(s.taskChannel),
-			workerservice.WithDoneChannel(s.done),
-			workerservice.WithMailService(mailservice.New()),
-		)
-	}
-	for _, worker := range workers {
-		go func(w workerservice.IWorker) {
-			if err := w.TriggerWorker(); err != nil {
-				s.logger.Error("error triggering worker", "error", err)
-			}
-		}(worker)
-	}
-
-	handleUnprocessedJob := cron.CronJob{
-		Name:     "FindUnprocessedTasksAndEnqueue",
-		Schedule: "@every 5m",
-		Func:     taskService.FindUnprocessedTasksAndEnqueue,
-	}
-	if err := cronService.RegisterJob(handleUnprocessedJob); err != nil {
-		s.logger.Error("error registering cron job", "error", err)
-	}
-
-	// Create http handlers instances and add them to the fiber app.
-	baseHttpHandler := basehttphandler.New(
-		basehttphandler.WithContextTimeout(constant.ContextCancelTimeout),
-		basehttphandler.WithLogger(s.logger),
-		basehttphandler.WithPackages(packages),
-	)
-	userHandler := userhandler.New(
-		userhandler.WithBaseHttpHandler(baseHttpHandler),
-		userhandler.WithUserService(userService),
-		userhandler.WithTaskService(taskService),
-	)
-	taskHandler := taskhandler.New(
-		taskhandler.WithBaseHttpHandler(baseHttpHandler),
-		taskhandler.WithTaskService(taskService),
-		taskhandler.WithUserService(userService),
-	)
-	s.handlers = append(s.handlers, userHandler, taskHandler)
-	for _, handler := range s.handlers {
-		handler.AddRoutes(s.app)
-	}
+	s.initializeStorages()
+	s.initializeServices()
+	s.initializeWorkers()
+	s.initializeHandlers()
 }
 
 // healthzCheck adds health endpoints to the apiserver.
@@ -175,23 +178,17 @@ func (s *apiServer) initializeApp() {
 		WriteTimeout: constant.ServerWriteTimeout,
 		IdleTimeout:  constant.ServerIdleTimeout,
 	})
-
 	corsConfig.AllowOrigins = constant.AllowedOrigins
 	corsConfig.AllowCredentials = false
-	corsConfig.AllowHeaders = strings.Join(
-		[]string{
-			constant.ContentType,
-			constant.Authorization,
-		}, ",")
-	corsConfig.AllowMethods = strings.Join(
-		[]string{
-			fiber.MethodGet,
-			fiber.MethodPost,
-			fiber.MethodPut,
-			fiber.MethodDelete,
-			fiber.MethodPatch,
-			fiber.MethodOptions,
-		}, ",")
+	corsConfig.AllowHeaders = strings.Join([]string{
+		constant.ContentType, constant.Authorization}, ",")
+	corsConfig.AllowMethods = strings.Join([]string{
+		fiber.MethodGet,
+		fiber.MethodPost,
+		fiber.MethodPut,
+		fiber.MethodDelete,
+		fiber.MethodPatch,
+		fiber.MethodOptions}, ",")
 	s.app.Use(cors.New(corsConfig))
 	s.app.Use(recover.New())
 	s.app.Use(middleware.HttpLoggingMiddleware(s.logger, s.app))
@@ -236,38 +233,43 @@ func (s *apiServer) Run() error {
 
 	s.initializeApp()
 	s.healthzCheck()
-	s.appendDepends()
+	s.createInstance()
 	return s.listenAndServe()
 }
 
 // listenAndServe starts the fiber app and listens for incoming requests. It also listens for shutdown signals and handles graceful shutdown.
 func (s *apiServer) listenAndServe() error {
-	shutdown := make(chan os.Signal, 1)
+	shutdown := make(chan os.Signal, 2)
 	apiErr := make(chan error, 1)
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		s.logger.Info("starting api server", "listening on", s.config.Port, "env", s.serverEnv)
-		apiErr <- s.app.Listen(":" + s.config.Port)
+		if err := s.app.Listen(":" + s.config.Port); err != nil {
+			apiErr <- err
+		}
 	}()
-	defer func() {
+	closeChan := func() {
+		close(s.done)
 		close(shutdown)
 		close(apiErr)
-		close(s.done)
 		close(s.taskChannel)
-	}()
+	}
+
 	select {
 	case err := <-apiErr:
-		s.done <- struct{}{}
+		closeChan()
 		return fmt.Errorf("error listening api server: %w", err)
 	case <-shutdown:
-		s.done <- struct{}{}
 		s.logger.Info("starting shutdown", "pid", os.Getpid())
+		s.done <- struct{}{}
 		ctx, cancel := context.WithTimeout(context.Background(), constant.ShutdownTimeout)
 		defer cancel()
 		if err := s.app.ShutdownWithContext(ctx); err != nil {
 			return fmt.Errorf("error shutting down server: %w", err)
 		}
+		closeChan()
+		time.Sleep(constant.ShutdownTimeout)
 		s.logger.Info("shutdown complete", "pid", os.Getpid())
 	}
 	return nil
