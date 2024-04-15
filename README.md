@@ -20,8 +20,8 @@ make cluster  # Create a minikube cluster. Adds metric server and dashboard.
 make clean    # Stop and delete cluster.
 make re       # All .yml's delete and apply via kubectl.
 make apply    # Creates all Kubernetes objects. It waits until Postgresql and Redis deployments are ready. After that start the deployment and service of our Go application.
-make hpa      # Starts Horizontal Pod Autoscaling deployments.
-make delete   # Deletes created k8s objects (deployments, services) via kubectl.
+make hpa      # Start Horizontal Pod Autoscaling deployments.
+make delete   # Delete created k8s objects (deployments, services) via kubectl.
 ```
 
 ## Usage
