@@ -43,29 +43,29 @@ GET     /api/v1/task/queue/fail
 The json body required to register is as follows.
 ```json
 {
-  "email": "example@example.com",
-  "password": "password123",
-  "smtp_host": "smtp.example.com",
-  "smtp_port": 587,
-  "smtp-username": "smtp_username@smtphost.com",
-  "smtp-password": "smtp_password"
+  "email": 		"example@example.com",
+  "password": 		"password123",
+  "smtp_host": 		"smtp.example.com",
+  "smtp_port": 		587,
+  "smtp-username": 	"smtp_username@smtphost.com",
+  "smtp-password": 	"smtp_password"
 }
 ```
 #### The json body required for login in is as follows.
 ```json
 {
-  "email": "example@example.com",
-  "password": "password123",
+  "email": 	"example@example.com",
+  "password": 	"password123",
 }
 ```
 #### Once you have logged in, you must send a request to the task endpoints with the Bearer token in the login response body.
 The json body required to add a task to the queue is as follows.
 ```json
 {
-  "recipient_email": "recipient@example.com",
-  "subject": "Example Subject",
-  "body": "Example Body Content",
-  "scheduled_at": "2024-04-15T12:00:00"
+  "recipient_email": 	"recipient@example.com",
+  "subject": 		"Example Subject",
+  "body": 		"Example Body Content",
+  "scheduled_at": 	"2024-04-15T12:00:00"
 }
 ```
 
