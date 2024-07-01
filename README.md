@@ -87,5 +87,7 @@ const (
 * If the value is not exceeded, the task is sent to the queue again.
 * Since we change the status of the failed task and update it in postgres and then send it to the queue again, it goes through the same pipeline and when MaxTryCount is exceeded, it is not sent to the queue and its status is updated as Cancelled.
 
-This pipeline uses cron service to process leaked tasks that need to be processed but are not. Cron service running a method called FindUnprocessedTasksAndEnqueue every 5 minutes. This method takes tasks that are StatusQueued in postgres and hasn't been processed for the last 5 minutes and sends them to the queue.
+This pipeline uses cron service to process leaked tasks that need to be processed but are not.\
+Cron service running a method called FindUnprocessedTasksAndEnqueue every 5 minutes.\
+This method takes tasks that are StatusQueued in postgres and hasn't been processed for the last 5 minutes and sends them to the queue.
 
